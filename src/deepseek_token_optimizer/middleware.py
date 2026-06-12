@@ -55,17 +55,17 @@ class DeepSeekMiddleware:
 
         self.chat = self._ChatProxy(self)
 
-    class _ChatProxy:
-        def __init__(self, middleware: "DeepSeekMiddleware"):
-            self._mw = middleware
-            self.completions = self._CompletionsProxy(middleware)
-
     class _CompletionsProxy:
         def __init__(self, middleware: "DeepSeekMiddleware"):
             self._mw = middleware
 
         def create(self, **kwargs):
             return self._mw._handle_request(**kwargs)
+
+    class _ChatProxy:
+        def __init__(self, middleware: "DeepSeekMiddleware"):
+            self._mw = middleware
+            self.completions = middleware._CompletionsProxy(middleware)
 
     def _handle_request(self, **kwargs):
         thinking_enabled = MessageOptimizer.is_thinking_enabled(kwargs)
