@@ -3,6 +3,8 @@ from typing import Optional
 
 from bs4 import BeautifulSoup, Tag
 
+import re as _re
+
 from ecommerce_ops_skill.platform import Platform, AmazonDomain
 from ecommerce_ops_skill.models import RankingItem, DataSource
 
@@ -334,6 +336,143 @@ class RankParser:
             AmazonDomain.AU: "AUD",
         }
         return currencies.get(domain, "USD")
+
+    @staticmethod
+    def parse_taobao_search_results(html: str, keyword: str, limit: int = 40) -> list[RankingItem]:
+        soup = BeautifulSoup(html, "lxml")
+        items: list[RankingItem] = []
+        rank = 0
+
+        card_selectors = [
+            ".item.J_MouserOnverReq",
+            "[data-category=\"auctions\"] .item",
+            ".grid-item .item-container",
+            "[class*=\"item\"]",
+        ]
+
+        cards: list[Tag] = []
+        for sel in card_selectors:
+            matched = soup.select(sel)
+            if matched:
+                cards = matched
+                break
+
+        for card in cards:
+            rank += 1
+            if rank > limit:
+                break
+            try:
+                title_tag = card.select_one("[class*=\"title\"] a, a[title], h3 a")
+                title = ""
+                if title_tag:
+                    title = title_tag.get("title", "") or title_tag.get_text(strip=True)
+
+                price_el = card.select_one("[class*=\"price\"] em, [class*=\"price\"] strong, [class*=\"price\"]")
+                price_text = price_el.get_text(strip=True) if price_el else ""
+                price = RankParser._parse_price(price_text)
+
+                sales_el = card.select_one("[class*=\"sale\"], [class*=\"deal\"], [class*=\"sales\"]")
+                sales_text = sales_el.get_text(strip=True) if sales_el else ""
+                monthly_sales = RankParser._extract_number_cn(sales_text)
+
+                shop_el = card.select_one("[class*=\"shop\"] span, [class*=\"shop\"] a")
+                shop = shop_el.get_text(strip=True) if shop_el else ""
+
+                card_classes = card.get("class") or []
+                is_tmall = any("tmall" in c for c in card_classes) or card.select_one("[class*=\"tmall\"], .tmall-icon") is not None
+
+                img_el = card.select_one("img[data-src], img[src]")
+                img_url = (img_el.get("data-src") or img_el.get("src") or "") if img_el else ""
+
+                items.append(RankingItem(
+                    platform=Platform.TMALL if is_tmall else Platform.TAOBAO,
+                    rank=rank,
+                    asin_or_id=f"tb-{keyword}-{rank}",
+                    title=title[:200] if title else f"{keyword} #{rank}",
+                    price=price,
+                    currency="CNY",
+                    review_count=monthly_sales,
+                    image_url=img_url or "",
+                    brand=shop,
+                    category=keyword,
+                    data_source=DataSource.WEB_SCRAPING,
+                ))
+            except Exception:
+                continue
+
+        return items
+
+    @staticmethod
+    def parse_jd_search_results(html: str, keyword: str, limit: int = 60) -> list[RankingItem]:
+        soup = BeautifulSoup(html, "lxml")
+        items: list[RankingItem] = []
+        rank = 0
+
+        cards = soup.select(".gl-item, li[data-sku], .goods-list li, .gl-warp li")
+        if not cards:
+            cards = soup.select("[data-sku]")
+
+        for card in cards:
+            rank += 1
+            if rank > limit:
+                break
+            try:
+                title_tag = card.select_one("[class*=\"name\"] a, [class*=\"name\"] em, a[title]")
+                title = ""
+                if title_tag:
+                    title = title_tag.get("title", "") or title_tag.get_text(strip=True)
+
+                price_el = card.select_one("[class*=\"price\"] i, [class*=\"price\"] strong")
+                price_text = price_el.get_text(strip=True) if price_el else ""
+                price = RankParser._parse_price(price_text)
+
+                comment_el = card.select_one("[class*=\"commit\"] a, .p-review")
+                comment_text = comment_el.get_text(strip=True) if comment_el else ""
+                comment_count = RankParser._extract_number_cn(comment_text)
+
+                shop_el = card.select_one("[class*=\"shop\"] a, .curr-shop")
+                shop = shop_el.get_text(strip=True) if shop_el else ""
+
+                is_self = (
+                    card.select_one("[class*=\"jd-ziying\"], .goods-icons i, [class*=\"self\"]")
+                    is not None
+                )
+                if not is_self:
+                    raw = str(card)
+                    if "自营" in raw:
+                        is_self = True
+
+                data_sku = card.get("data-sku", "")
+
+                items.append(RankingItem(
+                    platform=Platform.JD,
+                    rank=rank,
+                    asin_or_id=data_sku or f"jd-{keyword}-{rank}",
+                    title=title[:200] if title else f"JD #{rank}",
+                    price=price,
+                    currency="CNY",
+                    review_count=comment_count,
+                    brand=shop,
+                    category=keyword,
+                    is_bestseller=is_self,
+                    data_source=DataSource.WEB_SCRAPING,
+                ))
+            except Exception:
+                continue
+
+        return items
+
+    @staticmethod
+    def _extract_number_cn(text: str) -> Optional[int]:
+        if not text:
+            return None
+        text = text.replace("+", "").replace("人付款", "").replace("月销", "").replace("条评论", "")
+        if "万" in text:
+            m = _re.search(r"(\d+\.?\d*)", text)
+            if m:
+                return int(float(m.group(1)) * 10000)
+        m = _re.search(r"(\d+)", text.replace(",", ""))
+        return int(m.group(1)) if m else None
 
     @staticmethod
     def format_bestseller_table(items: list[RankingItem]) -> str:
