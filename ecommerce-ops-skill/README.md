@@ -1,16 +1,16 @@
 # Ecommerce Ops Skill
 
-Multi-platform ecommerce operations strategy tool — read sales rankings from Amazon, Taobao, Tmall, JD.com, analyze competitive landscape, and get actionable platform-specific operational advice.
+Multi-platform ecommerce operations strategy tool — Amazon / Taobao / JD / Pinduoduo / Douyin sales rankings, competitor analysis, and full-cycle operational strategies.
 
 ## Platforms
 
-| Platform | Sales Ranking | Product Detail | Sales Estimate | Strategy |
+| Platform | Ranking | Detail | Estimate | Strategy |
 |----------|:---:|:---:|:---:|:---:|
 | Amazon (10 domains) | Y | Y | Y | Y |
 | Taobao / Tmall | Y | — | Y | Y |
 | JD.com | Y | — | Y | Y |
-| Pinduoduo | — | — | — | v0.3 |
-| Douyin E-commerce | — | — | — | v0.3 |
+| Pinduoduo | Y | — | Y | Y |
+| Douyin E-commerce | Y | — | Y | Y |
 | Xiaohongshu (RED) | — | — | — | v0.4 |
 
 ## Installation
@@ -29,68 +29,83 @@ pip install -e .
 
 ## Quick Start
 
-### Amazon
+### Pinduoduo
 ```python
-from ecommerce_ops_skill import DataFetcher, Platform, AmazonDomain
+from ecommerce_ops_skill import DataFetcher, Platform
 
-fetcher = DataFetcher(amazon_domain=AmazonDomain.US)
-bl = fetcher.get_bestsellers(Platform.AMAZON, category_id="zgbs/kitchen", limit=20)
-for item in bl.items:
-    print(f"#{item.rank}: {item.title} - ${item.price}")
+fetcher = DataFetcher()
+
+# Search products
+items = fetcher.search_products(Platform.PINDUODUO, keyword="T恤", limit=20)
+for item in items:
+    label = "[旗舰店]" if item.is_bestseller else "[个人店]"
+    print(f"#{item.rank} {label} {item.title} - ￥{item.price} | 已拼{item.review_count}件")
+
+# Price competition analysis
+comp = fetcher.analyze_pdd_price_competition("充电宝")
+print(f"Competition pressure: {comp['price_competition_pressure']}")
+
+# Sales snapshot tracking
+fetcher.take_pdd_sales_snapshot("蓝牙耳机", limit=20)
+# ... wait some time ...
+fetcher.take_pdd_sales_snapshot("蓝牙耳机", limit=20)
+est = fetcher.estimate_sales(Platform.PINDUODUO, goods_id="pdd-蓝牙耳机-1")
+print(f"Daily: {est.estimated_daily_sales}, Monthly: {est.estimated_monthly_sales}")
 fetcher.close()
 ```
 
-### Taobao / JD Cross-platform Search
+### Douyin E-commerce
 ```python
-fetcher = DataFetcher()
+from ecommerce_ops_skill import DouyinClient, DouyinLiveMetrics
 
-# Taobao search by keyword
-items = fetcher.search_products(Platform.TAOBAO, keyword="连衣裙", limit=20)
-for item in items:
-    print(f"#{item.rank}: {item.title} - CNY {item.price} | 月销{item.review_count} | {item.brand}")
+client = DouyinClient()
 
-# JD search by keyword
-items = fetcher.search_products(Platform.JD, keyword="手机", sort="sales", limit=20)
-for item in items:
-    label = "[京东自营]" if item.is_bestseller else "[POP]"
-    print(f"#{item.rank} {label}: {item.title} - CNY {item.price}")
+# Estimate live-stream GMV by GPM
+live = client.estimate_live_gmv(avg_viewers=5000, duration_minutes=120, gpm=800)
+print(f"Estimated GMV: CNY {live['estimated_gmv_cny']:,.0f}")
+print(f"GPM: {live['gpm']}, OPM: {live['opm']}")
 
-# Cross-platform comparison
-results = fetcher.cross_platform_search("充电宝", platforms=[Platform.TAOBAO, Platform.JD])
-for platform_name, items_list in results.items():
-    print(f"{platform_name}: {len(items_list)} results")
-fetcher.close()
+# Short video conversion funnel
+funnel = client.analyze_short_video(
+    views=100000, completion_rate=0.45, interaction_rate=0.05,
+    product_click_rate=0.08, conversion_rate=0.03,
+)
+print(f"Tier: {funnel['content_tier']}, GMV: CNY {funnel['gmv_cny']:,.0f}")
+
+# Live room health check
+health = DouyinLiveMetrics.live_health_check(
+    gpm=800, opm=2.5, avg_stay_minutes=2.0,
+    interaction_rate=0.04, conversion_rate=0.03,
+)
+print(f"Live status: {health['status']}")
+client.close()
 ```
 
 ## Modules
 
 | Module | Description |
 |--------|-------------|
-| `platform.py` | Platform enums (Platform / AmazonDomain / RankingPeriod / StrategyPhase) |
-| `models.py` | Data models (RankingItem / ProductDetail / BestSellerList / SalesEstimate / KeywordData / CompetitorSnapshot) |
-| `rank_parser.py` | Universal HTML ranking parser: Amazon/淘宝/京东 Bestseller to structured data |
-| `amazon.py` | Amazon BSR reader + sales estimator (BSR/Review velocity models) |
-| `taobao.py` | Taobao/Tmall search parser + 月销量 estimator + shop competitiveness analysis |
-| `jd.py` | JD search parser + 京东自营vs.POP detection + bestseller list + comment-based estimator |
-| `data_fetcher.py` | Unified data entry, cross-platform routing, `cross_platform_search()` |
-| `strategy_engine.py` | Cross-platform ops strategy: Selection -> Listing -> Traffic -> Conversion -> Retention -> Review |
+| `platform.py` | Platform/AmazonDomain enums |
+| `models.py` | RankingItem / ProductDetail / SalesEstimate / CompetitorSnapshot |
+| `rank_parser.py` | HTML parser: Amazon/淘宝/京东/拼多多 search results |
+| `amazon.py` | Amazon BSR + 10-domain support + BSR/Review velocity estimator |
+| `taobao.py` | Taobao/Tmall search + 月销量 estimator + DSR shop ranking |
+| `jd.py` | JD search + self-operated detection + 排行榜 + comment estimator |
+| `pinduoduo.py` | PDD search + snapshot-diff estimator + price competition analysis |
+| `douyin.py` | Douyin live GPM/Opm + video funnel + product card + traffic source analysis |
+| `data_fetcher.py` | Unified entry + cross-platform search + snapshot/workflow APIs |
+| `strategy_engine.py` | 6-phase strategy: Selection/Listing/Traffic/Conversion/Retention for 5 platforms |
 
 ## Strategy Engine
 
 ```python
 from ecommerce_ops_skill import StrategyEngine, Platform
 
-# Amazon strategy
-engine = StrategyEngine(platform=Platform.AMAZON)
-phases = engine.full_strategy(category="Kitchen", market="US", budget="medium")
+# PDD strategy
+phases = StrategyEngine(platform=Platform.PINDUODUO).full_strategy()
 
-# Taobao strategy
-engine = StrategyEngine(platform=Platform.TAOBAO)
-phases = engine.full_strategy()
-
-# JD strategy
-engine = StrategyEngine(platform=Platform.JD)
-phases = engine.full_strategy()
+# Douyin strategy
+phases = StrategyEngine(platform=Platform.DOUYIN).full_strategy()
 ```
 
 ## License

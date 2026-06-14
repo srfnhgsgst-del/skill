@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecommerce-ops-skill"
-version = "0.2.0"
-description = "多平台电商运营策略工具——集成 Amazon/淘宝/京东 销量榜单读取、竞品估算、跨平台运营策略引擎"
+version = "0.3.0"
+description = "多平台电商运营策略——Amazon/淘宝/京东/拼多多/抖音 销量榜单+竞品分析+全链路运营策略引擎"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"

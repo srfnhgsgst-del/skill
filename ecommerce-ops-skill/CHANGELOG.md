@@ -1,37 +1,53 @@
 # Changelog
 
+## v0.3.0 (2026-06-13)
+
+### Added
+- **拼多多** 搜索排名解析 (`PinduoduoClient`)
+  - 搜索页商品排名 + 已拼件数解析
+  - 已拼件数差值法销量估算（模拟多多参谋数据模型）
+  - 价格竞争分析（Q1/Q3/中位数/低价段竞争压力评估）
+  - 品牌店旗舰店识别
+  - 热搜词推荐（按类目）
+- **拼多多销量估算器** (`PinduoduoSalesEstimator`)
+  - 双时间点差值法：日销 = 增量/小时 × 24
+  - 爆款等级分级：explosive/hot/growing/steady/cold
+  - GMV层级划分：S/A/B/C/D 五档
+- **抖音电商** 数据模型 (`DouyinClient`)
+  - 直播GPM估算：GPM × 人数 × 时长 = 预估GMV
+  - 直播Opm（每分钟订单量）计算
+  - 短视频转化漏斗：完播率→互动率→商品点击→成交
+  - 商品卡流量模型：曝光→点击→加购→成交→GPM
+  - 达人账号评分：粉丝互动率+内容力+直播效率
+  - GPM → 日销估算
+- **抖音直播指标** (`DouyinLiveMetrics`)
+  - GPM/Opm/UV价值/停留率计算
+  - 直播间健康度诊断（5个维度自动检查）
+- **抖音流量来源分析** (`DouyinTrafficSource`)
+  - 推荐/搜索/关注/付费/直播短视频互导 五渠道对标
+  - 渠道表现 vs 行业基准对比
+  - 流量优化建议自动生成
+- **RankParser** 扩展：`parse_pinduoduo_search_results` / `_extract_pdd_sales`
+- **DataFetcher** 扩展：
+  - PDD/Douyin sales estimation routing
+  - `take_pdd_sales_snapshot()` 快照录制
+  - `analyze_pdd_price_competition()` 价格竞争分析
+  - `analyze_douyin_live()` / `analyze_douyin_video_funnel()`
+- **StrategyEngine** 扩展：
+  - 拼多多6阶段策略（选品→上架→多多搜索/场景/全站推广/进宝/拼团裂变→转化→复购）
+  - 抖音电商6阶段策略（选品→内容上架→千川/达人矩阵/自播/短视频SEO→直播间转化→粉丝复购）
+  - 3个预算档位全覆盖
+- 30个新增单元测试（PDD 8 + Douyin 12 + RankParser 3 + StrategyEngine 4）
+
 ## v0.2.0 (2026-06-13)
 
 ### Added
 - **淘宝/天猫** 搜索排名解析 (`TaobaoClient`)
-  - 搜索结果页关键词排名抓取
-  - 月销量(月销X万+)解析与估算
-  - 天猫店铺识别、热词推荐
-  - 销量估算器 (`TaobaoSalesEstimator`)：日均订单、转化率估算、店铺竞争力分级
 - **京东** 搜索排名解析 (`JDClient`)
-  - 搜索结果页排名 + 京东自营vs.POP识别
-  - 京东排行榜(phb)榜单抓取
-  - 评价数→销量换算估算模型
-  - 类目排行索引 (`JDCategoryRanking`)
-- **RankParser** 扩展：`parse_taobao_search_results` / `parse_jd_search_results` / `_extract_number_cn`
-- **DataFetcher** 扩展：
-  - `search_products(platform, keyword)` 统一搜索接口
-  - `cross_platform_search(keyword)` 同关键词跨平台比价
-  - 淘宝/京东 `estimate_sales` 路由
-- **StrategyEngine** 扩展：
-  - 淘宝/天猫六阶段策略（选品→上架→直通车/引力魔方/万相台/直播/逛逛→转化→私域复购）
-  - 京东六阶段策略（选品→商详→京准通/购物触点/秒杀→转化→PLUS会员/自营）
-  - `cross_platform_compare()` 跨平台数据对比
-  - 三个预算档位全覆盖（low/medium/high）
-- 38 个新增测试（淘宝 8 + 京东 5 + RankParser CN 4 + StrategyEngine CN 7）
+- 跨平台搜索 `cross_platform_search()`
+- 淘宝/京东全链路策略引擎扩展
 
 ## v0.1.0 (2026-06-13)
 
 ### Added
-- Amazon Best Sellers Rank (BSR) 榜单读取能力
-- 产品页详情解析（价格/评论/BuyBox/库存状态）
-- 通用榜单解析引擎 `rank_parser.py`
-- 跨平台运营策略引擎骨架 `strategy_engine.py`
-- 数据模型层 `models.py` + 平台枚举 `platform.py`
-- 统一数据获取入口 `data_fetcher.py`
-- 基础项目结构
+- Amazon BSR 榜单读取 + 跨平台策略引擎骨架

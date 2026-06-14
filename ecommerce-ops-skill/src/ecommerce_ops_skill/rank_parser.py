@@ -475,6 +475,86 @@ class RankParser:
         return int(m.group(1)) if m else None
 
     @staticmethod
+    def parse_pinduoduo_search_results(html: str, keyword: str, limit: int = 40) -> list[RankingItem]:
+        soup = BeautifulSoup(html, "lxml")
+        items: list[RankingItem] = []
+        rank = 0
+
+        card_selectors = [
+            "[data-active=\"goods\"]",
+            ".goods-list .goods-item",
+            "[class*=\"goods\"]",
+            ".index-list-page .list",
+        ]
+
+        cards: list[Tag] = []
+        for sel in card_selectors:
+            matched = soup.select(sel)
+            if matched:
+                cards = matched
+                break
+
+        for card in cards:
+            rank += 1
+            if rank > limit:
+                break
+            try:
+                title_tag = card.select_one("[class*=\"title\"] span, [class*=\"title\"], .name, [class*=\"goods-name\"]")
+                title = ""
+                if title_tag:
+                    title = title_tag.get("title", "") or title_tag.get_text(strip=True)
+
+                price_el = card.select_one("[class*=\"price\"] span, [class*=\"price\"]")
+                price_text = price_el.get_text(strip=True) if price_el else ""
+                price = RankParser._parse_price(price_text)
+
+                sales_el = card.select_one("[class*=\"sales\"], [class*=\"sold\"]")
+                sales_text = sales_el.get_text(strip=True) if sales_el else ""
+                sales = RankParser._extract_pdd_sales(sales_text)
+
+                shop_el = card.select_one("[class*=\"mall\"], [class*=\"shop\"], .mall-name")
+                shop = shop_el.get_text(strip=True) if shop_el else ""
+
+                is_mall = (
+                    card.select_one("[class*=\"mall\"]") is not None
+                    or "旗舰" in (card.get("class") or [])
+                )
+
+                img_el = card.select_one("img[src], img[data-src]")
+                img_url = (img_el.get("data-src") or img_el.get("src") or "") if img_el else ""
+
+                items.append(RankingItem(
+                    platform=Platform.PINDUODUO,
+                    rank=rank,
+                    asin_or_id=f"pdd-{keyword}-{rank}",
+                    title=title[:200] if title else f"PDD #{rank}",
+                    price=price,
+                    currency="CNY",
+                    review_count=sales,
+                    image_url=img_url or "",
+                    brand=shop,
+                    category=keyword,
+                    is_bestseller=is_mall,
+                    data_source=DataSource.WEB_SCRAPING,
+                ))
+            except Exception:
+                continue
+
+        return items
+
+    @staticmethod
+    def _extract_pdd_sales(text: str) -> Optional[int]:
+        if not text:
+            return None
+        text = text.replace("已拼", "").replace("件", "").replace("+", "").replace("万件", "万")
+        if "万" in text:
+            m = _re.search(r"(\d+\.?\d*)", text)
+            if m:
+                return int(float(m.group(1)) * 10000)
+        m = _re.search(r"(\d+\.?\d*)", text.replace(",", ""))
+        return int(float(m.group(1))) if m else None
+
+    @staticmethod
     def format_bestseller_table(items: list[RankingItem]) -> str:
         lines = []
         header = f"{'#':>4}  {'ASIN':>12}  {'Price':>10}  {'Rating':>6}  {'Reviews':>8}  {'Title'}"

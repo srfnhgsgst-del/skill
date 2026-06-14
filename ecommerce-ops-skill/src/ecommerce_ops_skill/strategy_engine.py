@@ -72,6 +72,10 @@ class StrategyEngine:
             return self._taobao_selection(category)
         elif self.platform == Platform.JD:
             return self._jd_selection(category)
+        elif self.platform == Platform.PINDUODUO:
+            return self._pdd_selection(category)
+        elif self.platform == Platform.DOUYIN:
+            return self._douyin_selection(category)
         else:
             return {"phase": "selection", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -82,6 +86,10 @@ class StrategyEngine:
             return self._taobao_listing()
         elif self.platform == Platform.JD:
             return self._jd_listing()
+        elif self.platform == Platform.PINDUODUO:
+            return self._pdd_listing()
+        elif self.platform == Platform.DOUYIN:
+            return self._douyin_listing()
         else:
             return {"phase": "listing", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -92,6 +100,10 @@ class StrategyEngine:
             return self._taobao_traffic(budget)
         elif self.platform == Platform.JD:
             return self._jd_traffic(budget)
+        elif self.platform == Platform.PINDUODUO:
+            return self._pdd_traffic(budget)
+        elif self.platform == Platform.DOUYIN:
+            return self._douyin_traffic(budget)
         else:
             return {"phase": "traffic", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -102,6 +114,10 @@ class StrategyEngine:
             return self._taobao_conversion()
         elif self.platform == Platform.JD:
             return self._jd_conversion()
+        elif self.platform == Platform.PINDUODUO:
+            return self._pdd_conversion()
+        elif self.platform == Platform.DOUYIN:
+            return self._douyin_conversion()
         else:
             return {"phase": "conversion", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -112,6 +128,10 @@ class StrategyEngine:
             return self._taobao_retention()
         elif self.platform == Platform.JD:
             return self._jd_retention()
+        elif self.platform == Platform.PINDUODUO:
+            return self._pdd_retention()
+        elif self.platform == Platform.DOUYIN:
+            return self._douyin_retention()
         else:
             return {"phase": "retention", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -386,4 +406,172 @@ class StrategyEngine:
                 "服务增值：延保+配件+增值服务提高复购",
             ],
             "key_metrics": ["复购率", "Plus会员复购率", "客单价提升率", "店铺粉丝数", "会员活跃度"],
+        }
+
+    def _pdd_selection(self, category: str) -> dict:
+        return {
+            "phase": "selection", "platform": "pinduoduo",
+            "title": "拼多多选品策略",
+            "steps": [
+                "分析类目价格带：拼多多消费者高度价格敏感，找准低价爆款价格段",
+                "查看已拼10万+的爆款特征：价格/主图/标题/DSR",
+                "供应链评估：能否做到类目最低价前20%？不能则考虑差异化",
+                "避开品牌旗舰店密集品类，选择白牌有机会的赛道",
+                "关注百亿补贴品类：平台扶持的高流量品类",
+                "测算多多进宝佣金+多多搜索CPC，预估ROI",
+                "低客单(<￥30)走量策略 vs 中客单(￥50-150)利润策略选其一",
+            ],
+            "key_metrics": ["类目均价", "头部已拼件数", "品牌店铺占比", "多多搜索CPC", "利润率"],
+            "risk_warnings": ["超低价品类(均价<￥10)：毛利率极低", "品牌高度集中品类", "高退货率品类(服饰>30%)"],
+        }
+
+    def _pdd_listing(self) -> dict:
+        return {
+            "phase": "listing", "platform": "pinduoduo",
+            "title": "拼多多商品上架优化",
+            "steps": [
+                "标题公式：促销词+核心关键词+属性词+场景词（30字充分利用）",
+                "主图核心：价格标/卖点图标/场景图，突出性价比",
+                "10张主图全利用：首图吸睛→场景→细节→对比→活动→服务承诺",
+                "SKU布局引流款+利润款+活动款，引流款定最低价",
+                "拼单价 vs 单买价差策略：拼单价低15-30%驱动拼团",
+                "详情页突出痛点+解决方案+产品对比+买家秀",
+                "服务标签：极速退款/退货包运费/顺丰包邮/48小时发货",
+            ],
+            "key_metrics": ["曝光量", "点击率", "转化率", "收藏率", "DSR评分"],
+        }
+
+    def _pdd_traffic(self, budget: str) -> dict:
+        cfg = {"low": "￥50-100/天", "medium": "￥200-500/天", "high": "￥800-2000/天"}.get(budget, "￥200-500/天")
+        return {
+            "phase": "traffic", "platform": "pinduoduo",
+            "title": "拼多多流量获取",
+            "budget_recommendation": {"daily_ppc": cfg},
+            "steps": [
+                "多多搜索：关键词搜索广告，类目大词+精准长尾词组合",
+                "多多场景：首页推荐/活动页/支付页等场景资源位",
+                "全站推广：AI智能投放，适合新手中小卖家",
+                "多多进宝：CPS按成交付费，设置30-50%高佣冲量",
+                "活动报名：9.9特卖→限时秒杀→品牌清仓→百亿补贴（阶梯式）",
+                "拼团裂变：2人拼团机制+分享优惠券，社交裂变自然流量",
+                "多多视频：短视频种草带货，类抖音模式",
+                "每日预算建议：{}".format(cfg),
+            ],
+            "key_metrics": ["多多搜索ROI", "场景曝光量", "活动GMV占比", "拼团成功率", "多多进宝转化率"],
+        }
+
+    def _pdd_conversion(self) -> dict:
+        return {
+            "phase": "conversion", "platform": "pinduoduo",
+            "title": "拼多多转化优化",
+            "steps": [
+                "价格竞争力：同款商品价格需在类目前30%（拼多多核心转化因素）",
+                "拼单价：拼单价设置比单买价低20-40%，强化拼团动力",
+                "限量/限时优惠：倒计时+库存余量+已拼人数，社会证明驱动",
+                "评价管理：带图评价+追加评价，前10条评价重点维护",
+                "DSR评分：描述相符/物流服务/服务态度三维平衡，DSR<4.3限流",
+                "退货包运费：降低决策门槛，提升转化5-15%",
+                "店铺满减：满2件减X元/满X元减X元，提升客单价",
+            ],
+            "key_metrics": ["转化率", "客单价", "DSR均值", "退货率", "店铺评分"],
+        }
+
+    def _pdd_retention(self) -> dict:
+        return {
+            "phase": "retention", "platform": "pinduoduo",
+            "title": "拼多多复购与店铺运营",
+            "steps": [
+                "关注店铺优惠券：关注即领X元券，积累粉丝池",
+                "店铺收藏引导：首页+详情页+下单后弹窗引导收藏",
+                "复购优惠券：下单后送复购券（3-7天有效期）",
+                "新品快讯：店铺上新通知老客户",
+                "评价有礼：好评返现引导复购（合规方式）",
+                "多SKU关联：同品类组合装/套装提升客单价",
+                "供应链持续优化：降低成本→提价空间→利润增长",
+            ],
+            "key_metrics": ["复购率", "粉丝数", "店铺收藏数", "客户留存率", "客单价趋势"],
+        }
+
+    def _douyin_selection(self, category: str) -> dict:
+        return {
+            "phase": "selection", "platform": "douyin",
+            "title": "抖音电商选品策略",
+            "steps": [
+                "选择\"内容可视化\"品类：产品卖点能用15-60秒短视频清晰展示",
+                "关注抖音电商排行榜：实时热销榜+飙升榜+品牌榜",
+                "测算GPM(千次观看成交额)：选择GPM>500的潜力品类",
+                "分析品类的内容生态：相关达人数量+爆款视频特征+带货转化",
+                "高毛利(>50%)才能覆盖达人佣金(20-40%)+千川投放成本",
+                "新奇特产品(视觉冲击力强)比标品更适合抖音生态",
+                "季节性产品提前2-3周布局短视频内容矩阵",
+            ],
+            "key_metrics": ["类目GPM", "带货达人数", "爆款视频播放量", "佣金比例", "毛利率"],
+            "risk_warnings": ["标品(无内容可视化空间)：内容生产成本高", "过气品类：流量红利消退", "达人佣金>50%品类"],
+        }
+
+    def _douyin_listing(self) -> dict:
+        return {
+            "phase": "listing", "platform": "douyin",
+            "title": "抖音商品上架与内容策略",
+            "steps": [
+                "商品标题：核心关键词+场景词+人群标签词(30字内)",
+                "商品主图：信息图+场景图+使用效果前后对比",
+                "商品详情页：前三屏决定转化(痛点+解决方案+产品展示+买家秀)",
+                "短视频种草：15-60秒，前3秒黄金开头(悬念/痛点/效果展示)",
+                "直播话术脚本：开场→痛点→产品展示→限时优惠→逼单转化",
+                "达人矩阵：头部(1-2个)+腰部(5-10个)+尾部(50+个)KOC铺量",
+                "商品卡优化：标题+主图+详情页+评价=搜索推荐双引擎",
+            ],
+            "key_metrics": ["商品卡曝光", "短视频完播率", "直播间GPM", "商品点击率", "加购率"],
+        }
+
+    def _douyin_traffic(self, budget: str) -> dict:
+        cfg = {"low": "￥100-300/天", "medium": "￥500-1500/天", "high": "￥3000-10000/天"}.get(budget, "￥500-1500/天")
+        return {
+            "phase": "traffic", "platform": "douyin",
+            "title": "抖音电商流量获取",
+            "budget_recommendation": {"daily_ad_budget": cfg},
+            "steps": [
+                "千川短视频引流：投放爆款视频→商品卡/直播间，测素材ROI",
+                "千川直播引流：直播间实时投放，直投直播间+短视频引流直播",
+                "达人矩阵带货：纯佣合作+坑位费+佣金混合模式",
+                "店铺自播：日播4-8小时积累权重，稳定GPM",
+                "短视频矩阵：品牌号+员工号+分销号多账号铺量",
+                "抖音SEO：标题+话题标签+搜索词布局，获取搜索流量",
+                "平台活动：抖音好物节/年货节/618/双11等大促爆发",
+                "每日投放预算建议：{}".format(cfg),
+            ],
+            "key_metrics": ["千川ROI", "直播间GPM", "短视频播放量", "达人带货GMV", "商品卡搜索排名"],
+        }
+
+    def _douyin_conversion(self) -> dict:
+        return {
+            "phase": "conversion", "platform": "douyin",
+            "title": "抖音电商转化策略",
+            "steps": [
+                "直播间停留时长：前3秒钩子话术，平均停留>2分钟为优",
+                "互动引导：点赞截图抽奖/福袋/限时优惠码",
+                "逼单话术：限时限量+库存倒数+已卖出展示+涨价预告",
+                "直播间优惠：直播间专享价/直播间满减/运费险",
+                "信任建立：品牌资质展示+达人背书+买家秀+售后承诺",
+                "短视频挂车：视频内容→商品链接无缝跳转",
+                "搜索承接：品牌词+品类词的搜索页优化",
+            ],
+            "key_metrics": ["直播间CVR", "平均停留时长", "互动率", "GPM", "退单率"],
+        }
+
+    def _douyin_retention(self) -> dict:
+        return {
+            "phase": "retention", "platform": "douyin",
+            "title": "抖音电商复购与粉丝运营",
+            "steps": [
+                "粉丝群运营：粉丝群专属优惠+上新通知+直播预告",
+                "会员体系：抖音店铺会员=积分+等级+会员价",
+                "店铺自播常态化：固定日播时段，培养粉丝观看习惯",
+                "短视频内容节奏：每周3-7条，保持账号活跃度",
+                "售后服务：48小时发货+7天无理由+极速退款",
+                "复购券：下单后自动发放X天内有效复购券",
+                "CRM数据：直播间观看→互动→下单→复购全链路追踪",
+            ],
+            "key_metrics": ["粉丝复购率", "粉丝增长率", "店铺会员数", "直播场均观看", "LTV"],
         }

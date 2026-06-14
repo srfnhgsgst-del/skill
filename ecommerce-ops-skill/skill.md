@@ -1,70 +1,69 @@
 # Ecommerce Ops Skill
 
-Multi-platform ecommerce operations strategy Skill — integrated Amazon / Taobao / Tmall / JD.com sales ranking reading, competitor analysis, cross-platform comparison, and full-cycle operational strategy (Selection -> Listing -> Traffic -> Conversion -> Retention -> Review).
+Multi-platform ecommerce operations strategy Skill — integrated Amazon / Taobao / JD / Pinduoduo / Douyin sales ranking reading, competitor analysis, cross-platform comparison, and full-cycle operational strategy.
 
 ## Activation
 
 This skill activates when:
 - User asks about hot-selling products or sales rankings on any ecommerce platform
 - User needs competitor analysis, product selection advice, or operational strategy
-- User asks about Amazon BSR, Taobao search ranking, JD.com self-operated vs POP
-- User wants to benchmark pricing, listing optimization, or PPC strategy across platforms
+- User asks about platform-specific advertising tools (直通车/京准通/多多搜索/千川)
+- User wants to benchmark pricing, listing optimization, or live-commerce performance
 - User inquires about cross-platform ecommerce operations best practices
-- User asks about 淘宝直通车, 京东京准通, 引力魔方, 万相台, or other platform advertising tools
 
 ## Core Principles
 
 ### 1. Sales Ranking Data — Platform-Specific Methods
 
-- **Amazon BSR**: `DataFetcher.get_bestsellers(Platform.AMAZON)` — hourly-updated Best Sellers list. BSR logarithmic to actual sales velocity.
-- **Taobao/Tmall**: `DataFetcher.search_products(Platform.TAOBAO, keyword)` — search results parse. Monthly sales displayed as "月销X件" or "X万+".
-- **JD.com**: `DataFetcher.search_products(Platform.JD, keyword)` or `get_bestsellers(Platform.JD)` — search results + JD排行榜. Self-operated (京东自营) vs POP seller identification.
+| Platform | Method | Key Metric |
+|----------|--------|------------|
+| Amazon | `get_bestsellers()` — BSR hourly rank | Sales velocity from BSR range |
+| Taobao/Tmall | `search_products()` — search results | 月销量 display |
+| JD.com | `search_products()` / `get_bestsellers()` | 评论数 + 自营vs.POP |
+| Pinduoduo | `search_products()` + snapshot tracking | 已拼件数差值→日销 |
+| Douyin | GPM/Opm models + funnel analysis | GPM × PV = GMV |
 
 ### 2. Sales Estimation by Platform
 
 | Platform | Method | Confidence |
 |----------|--------|:---:|
-| Amazon | BSR range → daily units table | 85% (BSR<100), 40% (BSR>10k) |
-| Taobao | Displayed monthly sales ÷ 30 | 70% |
-| JD | Comment count ÷ days ÷ 2.5% comment rate | 40% |
+| Amazon | BSR range → daily units table | 85% (BSR<100) |
+| Taobao | Monthly sales display ÷ 30 | 70% |
+| JD | Comment count ÷ days ÷ 2.5% | 40% |
+| Pinduoduo | Snapshot difference: Δsold / hours × 24 | 60% (4+ snaps) |
+| Douyin | GPM × daily impressions | 50% |
 
-### 3. Strategy by Platform
+### 3. Advertising Tools by Platform
 
-| Phase | Amazon | Taobao/Tmall | JD |
-|-------|--------|-------------|-----|
-| **Traffic** | SP/SB/SD PPC | 直通车/引力魔方/万相台/直播/逛逛 | 京准通(快车+触点)/秒杀/直播 |
-| **Content** | Amazon Posts | 逛逛短视频+图文 | 京东发现+短视频 |
-| **Live** | Amazon Live | 淘宝直播 | 京东直播 |
-| **External** | Social + Influencer | 抖音/小红书种草 | 微信小程序+社交媒体 |
-| **Membership** | Subscribe & Save | 店铺粉丝群+会员 | Plus会员+店铺会员 |
+| Platform | Search Ads | Display/Recommend | Content/Live | Performance |
+|----------|-----------|-------------------|-------------|-------------|
+| Amazon | SP | SB + SD | Posts + Live | Brand metrics |
+| Taobao | 直通车 | 引力魔方 | 淘宝直播+逛逛 | 万相台 |
+| JD | 京东快车 | 购物触点 | 京东直播+发现 | DMP |
+| Pinduoduo | 多多搜索 | 多多场景 | 多多视频+直播 | 全站推广 |
+| Douyin | 千川搜索 | 千川信息流 | 直播+短视频 | 千川全域 |
 
-### 4. Cross-Platform Competitive Analysis
+### 4. Live Commerce Metrics (Douyin)
 
-```python
-fetcher = DataFetcher()
-results = fetcher.cross_platform_search("蓝牙耳机", platforms=[Platform.TAOBAO, Platform.JD, Platform.AMAZON])
+- **GPM** (千次观看成交额): Core metric — GMV ÷ PV × 1000
+- **Opm** (每分钟订单量): Orders ÷ live duration minutes
+- **UV Value**: GMV ÷ unique viewers
+- **Health Check**: Auto-diagnose 5 dimensions (GPM/Opm/Stay/Interaction/CVR)
 
-engine = StrategyEngine()
-comparison = engine.cross_platform_compare(results)
-```
+## v0.3 Platform Support
 
-## v0.2 Platform Support
-
-| Platform | Sales Ranking | Product Detail | Sales Estimate | Strategy |
+| Platform | Ranking | Detail | Estimate | Strategy |
 |----------|:---:|:---:|:---:|:---:|
 | Amazon (10 domains) | Y | Y | Y | Y |
 | Taobao/Tmall | Y | — | Y | Y |
 | JD.com | Y | — | Y | Y |
-| Pinduoduo | — | — | — | — |
-| Douyin E-commerce | — | — | — | — |
+| Pinduoduo | Y | — | Y | Y |
+| Douyin E-commerce | Y | — | Y | Y |
 | Xiaohongshu | — | — | — | — |
 
 ## References
 
-- Amazon BSR: [Seller Central Help](https://sellercentral.amazon.com/help/hub/reference/G201648110)
-- Jungle Scout: [Amazon Sales Estimator](https://www.junglescout.com/estimator/)
-- Keepa: [Amazon Price & BSR Tracking](https://keepa.com/)
-- Helium 10: [Amazon Product Research Suite](https://www.helium10.com/)
-- 淘宝生意参谋: [商家数据中心](https://sycm.taobao.com/)
-- 京东商智: [京东商家数据平台](https://sz.jd.com/)
-- 蝉妈妈: [抖音数据分析平台](https://www.chanmama.com/)
+- Jungle Scout / Keepa / Helium 10 (Amazon)
+- 生意参谋 (Taobao) / 京东商智 (JD)
+- 多多参谋 (Pinduoduo) / 抖音罗盘 (Douyin)
+- 蝉妈妈 / 飞瓜数据 (Douyin data platforms)
