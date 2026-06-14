@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=68.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "deepseek-token-optimizer"
-version = "1.0.0"
+version = "1.1.0"
 description = "Optimize DeepSeek API token consumption by up to 70% through cache-aware design, thinking-mode control, and token budget management"
 readme = "README.md"
 license = {text = "MIT"}

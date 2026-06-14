@@ -1,0 +1,165 @@
+Metadata-Version: 2.4
+Name: deepseek-token-optimizer
+Version: 1.1.0
+Summary: Optimize DeepSeek API token consumption by up to 70% through cache-aware design, thinking-mode control, and token budget management
+License: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: openai>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+
+# DeepSeek Token Optimizer
+
+Reduce DeepSeek API token consumption by **up to 70%** through cache-aware message design, thinking-mode control, conversation summarization, and token budget management.
+
+## Why Token Costs Spike
+
+| Cause | Impact | Solution |
+|---|---|---|
+| Thinking mode (enabled by default) | Invisible chain-of-thought tokens billed as output | Disable for simple tasks; control effort level |
+| Context cache misses | **50x cost difference** ($0.14 vs $0.0028 per 1M tokens) | Cache-friendly message structure |
+| Unbounded conversation growth | Every turn appends to context | Summarize after ~8 turns |
+| Verbose system prompts | 3000+ tokens sent on EVERY request | Compress and deduplicate |
+| reasoning_content bloat (tool calls) | Must pass back all reasoning in subsequent turns | Strip when no tool call was made |
+
+## Installation
+
+```bash
+pip install deepseek-token-optimizer
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/your-org/deepseek-token-optimizer.git
+cd deepseek-token-optimizer
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Track Your Token Usage
+
+```python
+from deepseek_token_optimizer import TokenTracker
+
+tracker = TokenTracker(model="deepseek-v4-flash")
+
+# After each API call, feed the usage data
+tracker.parse_and_track(response.usage.__dict__)
+
+# Print a cost summary
+tracker.print_summary()
+```
+
+### 2. Disable Thinking for Simple Tasks
+
+```python
+from deepseek_token_optimizer import MessageOptimizer
+
+params = {"model": "deepseek-v4-flash", "messages": [...]}
+params = MessageOptimizer.disable_thinking(params)
+# Now thinking is off — no hidden reasoning tokens
+```
+
+### 3. Build Cache-Friendly Messages
+
+```python
+from deepseek_token_optimizer import CacheFriendlyBuilder
+
+builder = CacheFriendlyBuilder(
+    system_prompt="You are a Python coding assistant. Respond with code only.",
+)
+builder.set_system_prompt("You are a Python coding assistant. Respond with code only.")
+
+# Turn 1 — establishes the cache prefix
+messages = builder.build("Write a function to sort a list")
+
+# Turn 2 — same system prompt prefix = cache hit!
+messages = builder.build(
+    "Write a function to reverse a list",
+    history=messages  # append previous turn AFTER the stable prefix
+)
+```
+
+### 4. Summarize Long Conversations
+
+```python
+from deepseek_token_optimizer import summarize_conversation
+from openai import OpenAI
+
+client = OpenAI(api_key="...", base_url="https://api.deepseek.com")
+
+# When context gets too long:
+compacted = summarize_conversation(messages, client)
+```
+
+### 5. Check Cache Hit Status
+
+```python
+from deepseek_token_optimizer import check_cache_hit, compute_cache_savings
+
+hit, miss, rate = check_cache_hit(response.usage.__dict__)
+savings = compute_cache_savings(hit, miss, model="deepseek-v4-flash")
+print(f"Cache hit rate: {rate:.1%}")
+print(f"Saved ${savings['savings_from_cache']:.6f} from caching")
+```
+
+## Optimization Strategy by Task Type
+
+| Task | Thinking | Effort | Context Strategy |
+|---|---|---|---|
+| Simple Q&A | OFF | — | Fresh each turn |
+| Code generation | OFF | — | Cache-warm system prompt |
+| Translation | OFF | — | Single request |
+| Debugging | ON | `low` | Keep recent 3 turns |
+| Architecture design | ON | `high` | Summary at 8 turns |
+| Agent orchestration | ON | `high` | Summary at 8 turns, strip non-tool reasoning |
+
+## API Reference
+
+### `TokenTracker`
+- `track(usage)` — Track a TokenUsage dataclass
+- `track_request(...)` — Track raw token counts
+- `parse_and_track(usage_dict)` — Track from a DeepSeek API response
+- `total_cost()` → float — Total cost in USD
+- `total_tokens()` → dict — Token breakdown
+- `overall_cache_hit_rate()` → float — 0.0 to 1.0
+- `potential_savings_report()` → dict — Savings analysis
+- `print_summary()` — Formatted console output
+- `export(filepath)` — Save as JSON
+
+### `MessageOptimizer`
+- `disable_thinking(params)` — Remove thinking from API params
+- `set_thinking_effort(params, effort)` — Set effort level
+- `strip_reasoning_from_context(messages, last_was_tool_call)` — Clean context
+- `estimate_tokens(text)` → int — Rough token count
+- `estimate_message_tokens(messages)` → int — Token count for message array
+- `should_summarize(messages, threshold)` → bool
+
+### `CacheFriendlyBuilder`
+- `build(user_content, history)` → list — Build cache-optimized messages
+- `build_multi_turn(turns, thinking_effort)` → tuple — Multi-turn messages
+- `warm_cache(warmup_content, client, model)` → str — Establish cache prefix
+
+### Utility Functions
+- `summarize_conversation(messages, client, model, max_summary_tokens)` → list
+- `compress_system_prompt(prompt, target_tokens)` → str
+- `get_optimal_thinking_config(task_complexity, task_type, model_variant)` → dict
+- `check_cache_hit(response_usage)` → tuple
+- `compute_cache_savings(cache_hit, cache_miss, model)` → dict
+- `recommend_optimizations(hit_rate, message_count, context_tokens)` → list[str]
+
+## License
+
+MIT
