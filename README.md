@@ -1,28 +1,99 @@
+# DeepSeek Agent Skills — 智能体技能库
 
-**DeepSeek Agent Skills — DeepSeek 智能体技能库**
+基于 DeepSeek 大语言模型生态的 Agent 技能（Skill）集合，提供开箱即用的能力模块，帮助开发者快速构建高效、低成本的智能体应用。
 
-本仓库聚焦 DeepSeek 大语言模型生态，专注于 AI Agent 智能体技能（Skill）的开发、沉淀与最佳实践分享。基于 DeepSeek API 的独特能力体系，系统化梳理 Agent 开发中的关键技能模块，帮助开发者快速构建高效、稳定、低成本的智能体应用。
+---
 
-**核心技能方向：**
+## Skills
 
-一、Token 成本优化。DeepSeek 的计费机制与 OpenAI 等模型有显著差异，尤其体现在 Thinking Mode（思维链模式）和 Context Caching（上下文缓存）上。Thinking Mode 默认开启并产生大量不可见推理 Token，直接推高使用成本。本仓库提供完整的 Token 监控、缓存命中检测、成本核算能力，并沉淀了一套经过验证的优化策略：按任务类型动态控制思考模式开关与 effort 级别、设计缓存友好的消息前缀结构、压缩系统提示词、在长对话中自动摘要截断等。实测可将 Token 消耗降低最高 70%。
+### 1. deepseek-token-optimizer
 
-二、Thinking Mode 精细控制。DeepSeek 的 Thinking Mode 分为 disabled、low、high、max 等多个级别，不同任务需要差异化配置。本仓库整理出按任务复杂度（简单问答、代码生成、调试排查、架构设计、Agent 编排）的最佳 thinking 配置矩阵，并提供 API 封装工具，让开发者无需手动调整即可自动匹配最优模式。
+**DeepSeek API Token 成本优化工具** — 通过缓存感知设计、Thinking Mode 控制、对话摘要和 Token 预算管理，最高降低 **70%** Token 消耗。
 
-三、Context Caching 深度利用。DeepSeek 的上下文缓存机制可实现缓存命中时输入成本降至 1/50（$0.0028 vs $0.14 每百万 Token）。但缓存命中依赖严格的前缀匹配规则。本仓库提供的 CacheFriendlyBuilder 工具可自动构建缓存友好的消息结构，确保系统提示词和首条消息在前缀位置稳定不变，新消息追加在后，从而最大化缓存命中率。
+| 特性 | 说明 |
+|------|------|
+| Thinking Mode 控制 | 按任务类型自动匹配 disabled / low / high 三档 effort 级别 |
+| Context Caching | 50x 价差（$0.0028 vs $0.14/M tokens）；CacheFriendlyBuilder 自动构建缓存友好前缀 |
+| Token 追踪 | TokenTracker 多模型追踪 + 成本拆解 + 缓存命中率分析 |
+| 消息优化 | 智能推理剥离（per-message tool-call 感知）、语义级系统提示词压缩 |
+| 透明中间件 | DeepSeekMiddleware 零代码改动包裹 OpenAI-compatible 客户端 |
+| 对话管理 | 超过 8 轮自动摘要截断、TokenBudget 预算检查 |
 
-四、多轮对话管理与上下文窗口优化。Agent 应用中，对话轮次增长带来的上下文膨胀是成本飙升的核心原因之一。本仓库提供智能摘要引擎，支持在指定轮次后自动压缩历史对话；同时处理 Tool Call 场景下的 reasoning_content 剥离与保留策略，避免不必要的 Token 浪费。
+```python
+from deepseek_token_optimizer import DeepSeekMiddleware
+client = DeepSeekMiddleware(openai_client, auto_summarize=True)
+response = client.chat.completions.create(model="deepseek-v4-flash", messages=[...])
+wrapped.print_summary()  # 无需代码改动，自动追踪并输出优化建议
+```
 
-五、Agent 工具调用编排。基于 DeepSeek 模型的 Function Calling / Tool Use 能力，提供可复用的工具调用技能模块，包括工具定义模板、调用链路追踪、错误重试策略、多工具并行调度等。
+**适配场景**：AI Agent 编排、多轮对话、工具调用、代码助手
 
-**适用人群：**
+---
 
-- 使用 DeepSeek API 构建 Agent 应用的开发者
-- 关注大模型 Token 成本控制的技术团队
-- AI Agent 框架（如 OpenCode、LangChain、AutoGen 等）的深度使用者
-- 对 LLM 推理效率优化感兴趣的工程师
+### 2. ecommerce-ops-skill
 
-**技术栈：** Python、DeepSeek API、OpenAI-compatible SDK、Function Calling、Tool Use
+**多平台电商运营策略引擎** — 集成 Amazon / 淘宝 / 京东 / 拼多多 / 抖音电商五大平台的销量榜单读取、竞品分析和全链路运营策略。
 
-持续更新中，欢迎贡献与交流。
-温馨提示:该介绍由ai生成,如有错处请谅解
+| 平台 | 销量排名 | 商品详情 | 销量估算 | 运营策略 |
+|------|:---:|:---:|:---:|:---:|
+| Amazon（10 个站点） | Y | Y | BSR 分档模型 | 6 阶段（SP/SB/SD） |
+| 淘宝 / 天猫 | Y | — | 月销量展示 ÷ 30 | 6 阶段（直通车/引力魔方/万相台） |
+| 京东 | Y | — | 评价数推算法 | 6 阶段（京准通/购物触点/Plus） |
+| 拼多多 | Y | — | 已拼件数差值法 | 6 阶段（多多搜索/全站推广/百亿补贴） |
+| 抖音电商 | Y | — | GPM × 曝光推算法 | 6 阶段（千川/直播/短视频/达人矩阵） |
+
+**核心能力**：
+
+- **榜单读取**：通用 HTML 解析引擎，覆盖五大平台热销榜/搜索排行
+- **销量估算**：BSR 分档、月销量快照差值、评价增速、GPM 推算等 5 种估算模型
+- **跨平台比价**：同关键词多平台价格/销量/店铺对比
+- **全链路策略**：选品 → 上架 → 流量 → 转化 → 复购 → 复盘，3 档预算全覆盖
+- **直播电商**：抖音 GPM/Opm/UV 值计算 + 短视频转化漏斗 + 直播间健康诊断
+
+```python
+from ecommerce_ops_skill import DataFetcher, Platform, StrategyEngine
+
+fetcher = DataFetcher()
+# 跨平台搜索同款比价
+results = fetcher.cross_platform_search("充电宝")
+
+# 抖音直播 GMV 预估
+live = fetcher.analyze_douyin_live(avg_viewers=5000, duration_minutes=120, gpm=800)
+
+# 全链路运营策略
+phases = StrategyEngine(platform=Platform.PINDUODUO).full_strategy()
+fetcher.close()
+```
+
+**适配场景**：电商运营选品、竞品监控、广告投放优化、直播数据分析、跨平台定价策略
+
+---
+
+## 安装
+
+每个 Skill 均可独立安装使用：
+
+```bash
+# Token 优化工具
+pip install deepseek-token-optimizer
+
+# 电商运营策略引擎
+pip install ecommerce-ops-skill
+```
+
+或从源码按需安装：
+
+```bash
+git clone https://github.com/srfnhgsgst-del/skill.git
+cd skill
+pip install -e ./deepseek-token-optimizer
+pip install -e ./ecommerce-ops-skill
+```
+
+## 技术栈
+
+Python · DeepSeek API · httpx · BeautifulSoup · Pydantic · pytest
+
+## 许可
+
+MIT
