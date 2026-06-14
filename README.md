@@ -88,7 +88,7 @@ git clone https://github.com/srfnhgsgst-del/skill.git
 cd skill
 pip install -e ./deepseek-token-optimizer
 pip install -e ./ecommerce-ops-skill
-```
+```context-optimizer: 优化 Token 利用率，通过上下文压缩、状态追踪（MEMORY.md）和精简通信，解决长对话中的上下文丢失与 Token 浪费问题。
 
 ## 技术栈
 
