@@ -1,45 +1,93 @@
 ---
 name: context-optimizer
-description: Optimizes token usage and enhances long-term memory by implementing context compression, state tracking, and lean communication. Use when conversations become long, complex tasks require persistence, or token limits are a concern.
+description: Compresses long conversations into structured state, tracks decisions in MEMORY.md, enforces lean responses, and reduces token waste. Use when context exceeds 20 turns, sessions span many files, token limits approach, tasks restart after resets, or repetitive verbose responses degrade performance.
 ---
 
 # Context Optimizer
 
-## Core Objectives
-- Minimize token waste by eliminating redundancy.
-- Prevent context drift via structured state tracking.
-- Maintain high-fidelity memory across long sessions.
+## When to Trigger
+
+Activate on any of these signals:
+- Conversation > 20 turns or visible token pressure
+- A major phase/subtask is completed
+- User says "continue", "resume", "remember where we left off"
+- Responses contain repeated explanations or boilerplate
+- Session restart or context reset is detected
 
 ## Workflows
 
-### 1. Context Compression
-When the conversation history grows long or a major phase is completed:
-- **Snapshotting**: Summarize key decisions, completed tasks, and current blockers.
-- **Pruning**: Identify and mentally archive redundant logs or repetitive error messages.
-- **State Update**: Update the project's state file (e.g., `MEMORY.md` or `.opencode/state.json`) with the latest snapshot.
+### 1. Context Compression (Snapshot Protocol)
 
-### 2. State Tracking (External Memory)
-Avoid relying solely on the chat window for critical information.
-- **Persistence**: Write key architectural decisions, variable mappings, and pending todos to a dedicated state file.
-- **Loading**: At the start of a new session or after a context reset, read the state file first to restore the mental model.
-- **Atomic Updates**: Only update the state file when a significant change occurs.
+After every major milestone or every ~15 exchanges:
 
-### 3. Lean Communication
-- **No Preamble/Postamble**: Remove "Sure, I can help", "Here is the result", and "Let me know if...".
-- **Direct Answers**: Provide**: Use lists, tables, or code blocks directly.
-- **Implicit Context**: Refer to previous decisions via state file references rather than repeating them.
+1. Generate a **Snapshot** of the current state:
 
-## Implementation Guide
+```
+## Session Snapshot
+**Objective:** [1-line goal]
+**Done:** [completed items, max 5 bullets]
+**Decisions:** [X chosen over Y because Z, max 3 items]
+**Active File:** [currently editing file]
+**Blockers:** [open questions or errors]
+**Next:** [immediate action]
+```
 
-### Memory File Template (`MEMORY.md`)
-Maintain a file with the following structure:
-- **Objective**: The ultimate goal of the current session.
-- **Current State**: What is currently implemented/configured.
-- **Key Decisions**: Why X was chosen over Y (to prevent re-litigating).
-- **Pending**: Immediate next steps.
-- **Context Map**: Mapping of critical files to their purposes.
+2. Merge this snapshot into `.opencode/MEMORY.md` at the end of the file.
+3. When starting a new task, read MEMORY.md first — do not re-derive already-saved decisions.
 
-## Checklists
-- [ ] Is the response free of conversational filler?
-- [ ] Has the external state file been updated after a major milestone?
-- [ ] Is the current prompt focused on the immediate task without unnecessary history?
+### 2. Token Budgeting
+
+- **Target**: Keep single responses under 200 tokens (excluding code blocks).
+- **Code blocks**: Prefer editing existing files over printing full files in chat.
+- **Reference**: Use `file.ts:42` notation for code locations instead of quoting blocks.
+- **Lists**: Use numbered lists, not paragraphs, for multi-item answers.
+
+### 3. Banned Response Patterns
+
+Never output these phrases or their variants:
+- "Sure, I can help with that" / "Let me know if you need anything else"
+- "Here is the result:" / "The answer is:"
+- "Based on the information provided..." / "I hope this helps"
+- "Let me explain..." / "First, let me understand..."
+- Re-stating the user's question verbatim
+- Summarizing an action just performed if no tool output was generated
+
+### 4. State File Protocol
+
+Maintain `.opencode/MEMORY.md` with this structure:
+
+```markdown
+# MEMORY
+
+## Active Objective
+[one sentence]
+
+## Implementation Status
+| File | Purpose | Status |
+|------|---------|--------|
+| src/foo.ts | Core logic | done |
+| src/bar.ts | Pending refactor | todo |
+
+## Key Decisions
+- [date] Decision: rationale (1 line each)
+
+## Pending Tasks
+- [ ] task
+```
+
+- **Write**: After completing a feature, decision, or architectural pivot.
+- **Read**: First action after every context reset or new session start.
+- **Never delete** old entries — append only.
+- **Script**: Use `node scripts/memory-mgr.js <init|read|snapshot>` for automated state management.
+
+## Checklist
+
+Execute silently before each response:
+- [ ] Can I answer in < 3 sentences?
+- [ ] Am I about to use a banned phrase?
+- [ ] Did I check MEMORY.md for existing decisions?
+- [ ] Should I write a snapshot now?
+
+## Advanced
+
+See [EXAMPLES.md](EXAMPLES.md) for before/after compression demos.
