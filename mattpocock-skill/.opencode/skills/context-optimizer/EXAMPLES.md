@@ -74,7 +74,47 @@ AI: [reads only the relevant function at auth.ts:56-72 → edits 1 line]
 auth.ts:62 — `token.expiresIn` → `token.expires_in` (camelCase mismatch)
 ```
 
-## 5. Response Format Standards
+## 6. Context Restoration
+
+### Bad (no MEMORY.md — wastes ~200 tokens asking questions)
+```
+AI: Welcome back! Where were we? What were you working on last time?
+    Can you remind me what stack we're using?
+    What was the last file you were editing?
+```
+
+### Good (reads MEMORY.md — restores in ~30 tokens)
+```
+AI:
+## Restored
+**Objective:** Build payment checkout flow
+**State:** src/pages/Checkout.tsx — form validation done, wiring API pending
+**Next:** Connect submit handler to `/api/checkout` endpoint
+```
+
+## 7. Priority-Based Retention
+
+### Before (MEMORY.md has mixed priorities, hard to distinguish critical from transient)
+```
+## Key Decisions
+- 2026-06-14: router — TanStack Router over React Router v6
+- 2026-06-14: state — Zustand over Redux
+- 2026-06-21: temp var name — renamed `data` to `payload` in checkout handler
+
+Without priority tags, "temp var rename" is as prominent as "router choice".
+```
+
+### After (P0 critical — always preserved; P2 transient — dropped after session)
+```
+## Key Decisions
+- [P0] 2026-06-14: router — TanStack Router over React Router v6
+- [P0] 2026-06-14: state — Zustand over Redux
+- [P2] 2026-06-21: temp var name — renamed `data` to `payload`
+
+After session end, P2 entry archived. Start of next session only sees P0.
+```
+
+## 8. Response Format Standards
 
 | Context | Format |
 |---------|--------|
