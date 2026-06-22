@@ -7,6 +7,7 @@ from ecommerce_ops_skill.taobao import TaobaoClient, TaobaoSalesEstimator
 from ecommerce_ops_skill.jd import JDClient
 from ecommerce_ops_skill.pinduoduo import PinduoduoClient, PinduoduoSalesEstimator
 from ecommerce_ops_skill.douyin import DouyinClient
+from ecommerce_ops_skill.xiaohongshu import XiaohongshuClient
 
 
 class DataFetcher:
@@ -21,6 +22,7 @@ class DataFetcher:
         self._pdd: Optional[PinduoduoClient] = None
         self._pdd_estimator: Optional[PinduoduoSalesEstimator] = None
         self._douyin: Optional[DouyinClient] = None
+        self._xhs: Optional[XiaohongshuClient] = None
         self._amazon_domain = amazon_domain
         self._timeout = timeout
 
@@ -71,6 +73,12 @@ class DataFetcher:
         if self._douyin is None:
             self._douyin = DouyinClient(timeout=self._timeout)
         return self._douyin
+
+    @property
+    def xhs(self) -> XiaohongshuClient:
+        if self._xhs is None:
+            self._xhs = XiaohongshuClient(timeout=self._timeout)
+        return self._xhs
 
     def get_bestsellers(self, platform: Platform = Platform.AMAZON, category_id: str = "zgbs", limit: int = 100) -> BestSellerList:
         if platform == Platform.AMAZON:
@@ -147,14 +155,14 @@ class DataFetcher:
                 return SalesEstimate(asin=product_id, platform=Platform.DOUYIN, confidence_level=0.0)
 
         else:
-            raise NotImplementedError(f"Sales estimate not available for {platform} in v0.3")
+            raise NotImplementedError(f"Sales estimate not available for {platform} in v0.4")
 
     def get_amazon_categories(self) -> list[dict]:
         return self.amazon.get_category_list()
 
     def cross_platform_search(self, keyword: str, platforms: Optional[list[Platform]] = None, limit: int = 20) -> dict:
         if platforms is None:
-            platforms = [Platform.TAOBAO, Platform.JD, Platform.PINDUODUO, Platform.DOUYIN]
+            platforms = [Platform.TAOBAO, Platform.JD, Platform.PINDUODUO, Platform.DOUYIN, Platform.XIAOHONGSHU]
         results: dict = {}
         for p in platforms:
             try:
@@ -164,6 +172,13 @@ class DataFetcher:
                 elif p in (Platform.TAOBAO, Platform.TMALL):
                     results[p.value] = self.taobao.search_products(keyword=keyword, limit=limit)
                 elif p == Platform.JD:
+                    results[p.value] = self.jd.search_products(keyword=keyword, limit=limit)
+                elif p == Platform.PINDUODUO:
+                    results[p.value] = self.pdd.search_products(keyword=keyword, limit=limit)
+                elif p == Platform.DOUYIN:
+                    results[p.value] = f"Douyin {keyword} — GPM/Content model available"
+                elif p == Platform.XIAOHONGSHU:
+                    results[p.value] = f"XHS {keyword} — Note engagement/KOL model available"
                     results[p.value] = self.jd.search_products(keyword=keyword, limit=limit)
                 elif p == Platform.PINDUODUO:
                     results[p.value] = self.pdd.search_products(keyword=keyword, limit=limit)
@@ -190,6 +205,15 @@ class DataFetcher:
         return self.douyin.analyze_short_video(views, completion, interaction, click, cvr)
 
     def close(self):
-        for client in [self._amazon, self._taobao, self._jd, self._pdd, self._douyin]:
+        for client in [self._amazon, self._taobao, self._jd, self._pdd, self._douyin, self._xhs]:
             if client:
                 client.close()
+
+    def analyze_xhs_note(self, views: int, likes: int, collects: int, comments: int, shares: int, **kwargs) -> dict:
+        return self.xhs.analyze_note_performance(views, likes, collects, comments, shares, **kwargs)
+
+    def analyze_xhs_kol(self, followers: int, avg_views: int, avg_likes: int, avg_collects: int, total_notes: int, **kwargs) -> dict:
+        return self.xhs.analyze_kol_profile(followers, avg_views, avg_likes, avg_collects, total_notes, **kwargs)
+
+    def model_xhs_campaign(self, budget: float, kol_count: int, avg_kol_followers: int, avg_kol_views: int, avg_engagement: float, product_price: float, **kwargs) -> dict:
+        return self.xhs.model_brand_campaign(budget, kol_count, avg_kol_followers, avg_kol_views, avg_engagement, product_price, **kwargs)

@@ -1,3 +1,6 @@
+from datetime import datetime as _dt
+from typing import Optional
+
 from ecommerce_ops_skill.platform import Platform, StrategyPhase
 
 
@@ -76,6 +79,8 @@ class StrategyEngine:
             return self._pdd_selection(category)
         elif self.platform == Platform.DOUYIN:
             return self._douyin_selection(category)
+        elif self.platform == Platform.XIAOHONGSHU:
+            return self._xhs_selection(category)
         else:
             return {"phase": "selection", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -90,6 +95,8 @@ class StrategyEngine:
             return self._pdd_listing()
         elif self.platform == Platform.DOUYIN:
             return self._douyin_listing()
+        elif self.platform == Platform.XIAOHONGSHU:
+            return self._xhs_listing()
         else:
             return {"phase": "listing", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -104,6 +111,8 @@ class StrategyEngine:
             return self._pdd_traffic(budget)
         elif self.platform == Platform.DOUYIN:
             return self._douyin_traffic(budget)
+        elif self.platform == Platform.XIAOHONGSHU:
+            return self._xhs_traffic(budget)
         else:
             return {"phase": "traffic", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -118,6 +127,8 @@ class StrategyEngine:
             return self._pdd_conversion()
         elif self.platform == Platform.DOUYIN:
             return self._douyin_conversion()
+        elif self.platform == Platform.XIAOHONGSHU:
+            return self._xhs_conversion()
         else:
             return {"phase": "conversion", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -132,6 +143,8 @@ class StrategyEngine:
             return self._pdd_retention()
         elif self.platform == Platform.DOUYIN:
             return self._douyin_retention()
+        elif self.platform == Platform.XIAOHONGSHU:
+            return self._xhs_retention()
         else:
             return {"phase": "retention", "platform": self.platform.value, "steps": ["to be refined"], "key_metrics": []}
 
@@ -575,3 +588,250 @@ class StrategyEngine:
             ],
             "key_metrics": ["粉丝复购率", "粉丝增长率", "店铺会员数", "直播场均观看", "LTV"],
         }
+
+    def _xhs_selection(self, category: str) -> dict:
+        return {
+            "phase": "selection", "platform": "xiaohongshu",
+            "title": "小红书选品策略",
+            "steps": [
+                "搜索关键词笔记数分析：笔记数<1万为蓝海，>10万为红海",
+                "分析品类笔记互动率：高收藏率=强购买意图品类",
+                "关注\"大牌平替\"搜索趋势：小红书用户对性价比高度敏感",
+                "选择视觉冲击力强的品类：小红书是图文种草平台",
+                "分析达人带货数据：品类头部达人数量+平均带货转化",
+                "产品需适配\"场景化\"内容：穿搭/家居/美妆/母婴/美食",
+            ],
+            "key_metrics": ["品类笔记数", "平均互动率", "收藏率", "种草达人数量", "CPM(千次曝光成本)"],
+            "risk_warnings": ["笔记高度饱和品类(>50万)", "低互动率品类(<2%)", "内容生产门槛高的品类"],
+        }
+
+    def _xhs_listing(self) -> dict:
+        return {
+            "phase": "listing", "platform": "xiaohongshu",
+            "title": "小红书笔记内容策略",
+            "steps": [
+                "笔记标题：数字+痛点+解决方案+关键词（20字内）",
+                "封面图：高颜值+对比效果+文字标签（第一吸引力）",
+                "笔记结构：开头钩子→痛点展示→产品解决方案→使用效果→购买引导",
+                "标签策略：3-5个精准话题标签（大词+长尾词组合）",
+                "发布时间：工作日12:00-13:00/18:00-20:00，周末9:00-11:00",
+                "评论区运营：置顶购买链接+FAQ+引导互动",
+                "合集创建：按品类/场景创建笔记合集，延长曝光周期",
+            ],
+            "key_metrics": ["笔记曝光量", "点击率", "互动率(赞藏评)", "收藏率", "商品点击率"],
+        }
+
+    def _xhs_traffic(self, budget: str) -> dict:
+        cfg = {"low": "￥200-500/篇", "medium": "￥1000-3000/篇", "high": "￥5000-15000/篇"}.get(budget, "￥1000-3000/篇")
+        return {
+            "phase": "traffic", "platform": "xiaohongshu",
+            "title": "小红书流量获取",
+            "budget_recommendation": {"per_content_kol": cfg},
+            "steps": [
+                "达人矩阵：KOC素人(50+)+尾部KOL(20+)+腰部KOL(5+)+头部KOL(1-2)",
+                "薯条推广：加热优质笔记，100元起投，CPM约30-50元",
+                "信息流广告：精准人群定向（年龄/地域/兴趣标签）",
+                "搜索广告：抢占品类关键词第一屏位置",
+                "品牌专区：品牌词搜索结果专属页面",
+                "话题营销：创建品牌话题+UGC激励机制",
+                "直播带货：店铺自播+达人直播双轨",
+                "单篇内容预算参考：{}".format(cfg),
+            ],
+            "key_metrics": ["CPM", "CPE(单互动成本)", "笔记ROI", "搜索SOV", "话题浏览量"],
+        }
+
+    def _xhs_conversion(self) -> dict:
+        return {
+            "phase": "conversion", "platform": "xiaohongshu",
+            "title": "小红书转化策略",
+            "steps": [
+                "笔记挂链：商品笔记直接挂载小红书商城链接",
+                "评论区引导：置顶购买链接+优惠口令",
+                "私信转化：自动回复设置+引导添加微信/进群",
+                "直播转化：直播间专属优惠+限时限量",
+                "信任背书：素人真实测评+使用前后对比",
+                "小红书商城：店铺装修+商品详情页优化",
+                "限时活动：新品首发价/粉丝专享价/节日特惠",
+            ],
+            "key_metrics": ["笔记挂链CTR", "商城转化率", "私域导流率", "直播间CVR", "客单价"],
+        }
+
+    def _xhs_retention(self) -> dict:
+        return {
+            "phase": "retention", "platform": "xiaohongshu",
+            "title": "小红书复购与社群运营",
+            "steps": [
+                "笔记矩阵持续输出：每月15-30篇品牌+达人+素人笔记",
+                "粉丝群运营：小红书粉丝群专属福利+新品试用",
+                "UGC激励：晒单返现/新品体验官活动",
+                "私域沉淀：小红书→微信社群→复购闭环",
+                "品牌号运营：企业号认证+品牌故事+店铺活动",
+                "数据复盘：月度笔记数据+转化数据分析优化",
+            ],
+            "key_metrics": ["粉丝增长率", "笔记月均互动", "复购率", "私域社群人数", "品牌搜索量"],
+        }
+
+    def generate_cross_platform_swot(self, platform_data: dict[str, list]) -> dict:
+        swot = {}
+        for platform_name, items in platform_data.items():
+            if not isinstance(items, list) or not items:
+                continue
+
+            prices = [i.price for i in items if i.price]
+            reviews = [i.review_count for i in items if i.review_count]
+            bs_count = sum(1 for i in items if i.is_bestseller)
+
+            avg_price = sum(prices) / len(prices) if prices else 0
+            avg_reviews = sum(reviews) / len(reviews) if reviews else 0
+
+            strength_points = []
+            if prices and min(prices) < avg_price * 0.7:
+                strength_points.append(f"Lowest price advantage ({min(prices)} vs avg {avg_price:.0f})")
+            if avg_reviews > 1000:
+                strength_points.append(f"High review volume ({avg_reviews:.0f} avg)")
+            if bs_count / len(items) > 0.5:
+                strength_points.append(f"Strong brand presence ({bs_count}/{len(items)} brand stores)")
+
+            weakness_points = []
+            if avg_price > sum(prices) / len(prices) * 1.3 and prices:
+                weakness_points.append("Priced above category average")
+            if avg_reviews < 100 and reviews:
+                weakness_points.append("Low review volume — weak social proof")
+
+            opportunity_points = [
+                f"Price gap: {min(prices)}-{max(prices)} range" if len(prices) >= 2 else "",
+                f"{platform_name} market expanding — content/live commerce opportunities",
+            ]
+            opportunity_points = [o for o in opportunity_points if o]
+
+            threat_points = []
+            if bs_count / len(items) > 0.7 and items:
+                threat_points.append("Brand store monopoly threat")
+            if len(items) > 20:
+                threat_points.append("High seller density — intense competition")
+
+            swot[platform_name] = {
+                "strengths": strength_points or ["Competitive pricing position"],
+                "weaknesses": weakness_points or ["Limited differentiation signals"],
+                "opportunities": opportunity_points or ["Market growth potential"],
+                "threats": threat_points or ["New entrants risk"],
+                "summary": {
+                    "items_analyzed": len(items),
+                    "avg_price": round(avg_price, 2),
+                    "brand_store_ratio": round(bs_count / len(items), 2) if items else 0,
+                },
+            }
+        return swot
+
+    def analyze_price_elasticity(self, items: list) -> dict:
+        if not items:
+            return {"error": "No data"}
+
+        prices = sorted([i.price for i in items if i.price])
+        if len(prices) < 5:
+            return {"error": "Need at least 5 items with prices"}
+
+        sales = [i.review_count or 0 for i in items if i.price]
+        if sum(sales) == 0:
+            sales = None
+
+        n = len(prices)
+        bins = 5
+        bin_size = (prices[-1] - prices[0]) / bins if prices[-1] > prices[0] else 1
+
+        price_bands = []
+        for b in range(bins):
+            lo = prices[0] + b * bin_size
+            hi = lo + bin_size
+            items_in_band = [i for i in items if i.price and lo <= i.price <= hi]
+            band_sales = sum(i.review_count or 0 for i in items_in_band)
+            price_bands.append({
+                "range": f"{lo:.0f}-{hi:.0f}",
+                "count": len(items_in_band),
+                "avg_price": round(sum(i.price for i in items_in_band) / max(1, len(items_in_band)), 2),
+                "total_sales": band_sales,
+                "concentration": round(len(items_in_band) / max(1, len(items)), 2),
+            })
+
+        mid_idx = n // 2
+        median_price = prices[mid_idx]
+        q1_price = prices[n // 4]
+        q3_price = prices[n * 3 // 4]
+
+        sweet_spot = None
+        max_items_band = max(price_bands, key=lambda b: b["count"])
+        if max_items_band["count"] >= 3:
+            sweet_spot = f"{max_items_band['range']} CNY ({max_items_band['count']} items)"
+
+        return {
+            "price_range": {"min": prices[0], "q1": q1_price, "median": median_price, "q3": q3_price, "max": prices[-1]},
+            "price_bands": price_bands,
+            "sweet_spot": sweet_spot,
+            "advice": (
+                f"Optimal price zone: {sweet_spot}" if sweet_spot
+                else f"Consider positioning between {q1_price:.0f}-{q3_price:.0f} CNY"
+            ),
+        }
+
+    def predict_seasonal_trend(self, category: str, historical_months: Optional[list[dict]] = None) -> dict:
+        seasonal_patterns = {
+            "clothing": {"peak": [3, 4, 9, 10], "trough": [1, 7, 12], "growth": "stable"},
+            "beauty": {"peak": [11, 12, 1], "trough": [6, 7, 8], "growth": "growing"},
+            "electronics": {"peak": [11, 12, 6], "trough": [2, 3, 4], "growth": "stable"},
+            "home": {"peak": [3, 4, 10, 11], "trough": [1, 2, 7], "growth": "growing"},
+            "food": {"peak": [1, 11, 12], "trough": [6, 7, 8], "growth": "stable"},
+            "baby": {"peak": [5, 6, 11], "trough": [2, 3, 8], "growth": "stable"},
+            "sport": {"peak": [3, 4, 5, 10], "trough": [1, 2, 7, 12], "growth": "growing"},
+            "general": {"peak": [11, 12], "trough": [6, 7], "growth": "stable"},
+        }
+
+        pattern = seasonal_patterns.get(category, seasonal_patterns["general"])
+        month_names = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
+                       7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+        current_month = _dt.now().month
+
+        next_peak = [m for m in sorted(pattern["peak"]) if m > current_month]
+        if not next_peak:
+            next_peak = [min(pattern["peak"])]
+        days_to_peak = (next_peak[0] - current_month) * 30 if next_peak[0] > current_month else (12 - current_month + next_peak[0]) * 30
+
+        return {
+            "category": category,
+            "peak_months": [month_names[m] for m in pattern["peak"]],
+            "trough_months": [month_names[m] for m in pattern["trough"]],
+            "growth_trend": pattern["growth"],
+            "next_peak": f"{month_names[next_peak[0]]} (in ~{days_to_peak} days)",
+            "advice": (
+                f"Prepare inventory and campaigns now for {month_names[next_peak[0]]} peak (est. {days_to_peak} days)"
+                if days_to_peak < 90
+                else f"Plan ahead for {month_names[next_peak[0]]} peak season"
+            ),
+        }
+
+    def full_cross_platform_matrix(self, data_by_platform: dict[str, list]) -> str:
+        matrix: list[list[str]] = []
+        header = ["Metric"] + list(data_by_platform.keys())
+        matrix.append(header)
+
+        metrics = [
+            ("Items", lambda items: str(len(items))),
+            ("Avg Price", lambda items: f"{sum(i.price for i in items if i.price)/max(1,len([1 for i in items if i.price])):.2f}" if any(i.price for i in items) else "N/A"),
+            ("Price Range", lambda items: f"{min(i.price for i in items if i.price)}-{max(i.price for i in items if i.price)}" if len([i.price for i in items if i.price])>=2 else "N/A"),
+            ("Bestseller%", lambda items: f"{sum(1 for i in items if i.is_bestseller)/max(1,len(items))*100:.0f}%"),
+            ("Avg Reviews", lambda items: f"{int(sum(i.review_count or 0 for i in items)/max(1,len(items))):,}"),
+        ]
+
+        for metric_name, fn in metrics:
+            row = [metric_name]
+            for items in data_by_platform.values():
+                row.append(fn(items) if isinstance(items, list) else str(items))
+            matrix.append(row)
+
+        col_widths = [max(len(str(row[i])) for row in matrix) for i in range(len(header))]
+        lines = []
+        for row in matrix:
+            line = " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
+            lines.append(line)
+            if row == matrix[0]:
+                lines.append("-+-".join("-" * w for w in col_widths))
+        return "\n".join(lines)

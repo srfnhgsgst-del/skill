@@ -203,7 +203,8 @@ class TestStrategyEngine:
     def test_unsupported_platform(self):
         engine = StrategyEngine(platform=Platform.XIAOHONGSHU)
         result = engine.selection_strategy()
-        assert "to be refined" in str(result["steps"]).lower()
+        assert result["platform"] == "xiaohongshu"
+        assert len(result["steps"]) >= 5
 
     def test_analyze_competitor(self):
         engine = StrategyEngine()
