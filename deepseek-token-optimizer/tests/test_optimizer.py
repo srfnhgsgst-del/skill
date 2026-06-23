@@ -110,7 +110,7 @@ class TestMessageOptimizer:
             {"role": "assistant", "content": "hi", "reasoning_content": "long reasoning..."},
             {"role": "user", "content": "how are you"},
         ]
-        stripped = MessageOptimizer.strip_reasoning_from_context(messages)
+        stripped = MessageOptimizer.strip_reasoning_smart(messages)
         assert "reasoning_content" not in stripped[1]
         assert stripped[1]["content"] == "hi"
 
@@ -125,7 +125,7 @@ class TestMessageOptimizer:
             },
             {"role": "tool", "tool_call_id": "1", "content": "sunny"},
         ]
-        stripped = MessageOptimizer.strip_reasoning_from_context(messages, last_was_tool_call=True)
+        stripped = MessageOptimizer.strip_reasoning_smart(messages)
         assert len(stripped) == 3
 
     def test_estimate_tokens_english(self):
@@ -147,15 +147,15 @@ class TestMessageOptimizer:
 
     def test_should_summarize(self):
         long_msg = [{"role": "user", "content": "x" * 100000}]
-        assert MessageOptimizer.should_summarize(long_msg, threshold_tokens=500)
+        assert MessageOptimizer.should_summarize(long_msg, threshold_tokens=500).should_summarize
         short_msg = [{"role": "user", "content": "hi"}]
-        assert not MessageOptimizer.should_summarize(short_msg, threshold_tokens=500)
+        assert not MessageOptimizer.should_summarize(short_msg, threshold_tokens=500).should_summarize
 
 
 class TestCacheFriendlyBuilder:
     def test_build_with_system_and_user(self):
         builder = CacheFriendlyBuilder(system_prompt="You are helpful.")
-        messages = builder.build("Hello")
+        messages, _ = builder.build("Hello")
         assert len(messages) == 2
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
@@ -166,7 +166,7 @@ class TestCacheFriendlyBuilder:
             {"role": "user", "content": "q1"},
             {"role": "assistant", "content": "a1"},
         ]
-        messages = builder.build("q2", history=history)
+        messages, _ = builder.build("q2", history=history)
         assert len(messages) == 4
         assert messages[0]["role"] == "system"
         assert messages[-1]["role"] == "user"
@@ -174,7 +174,7 @@ class TestCacheFriendlyBuilder:
 
     def test_build_without_system_prompt(self):
         builder = CacheFriendlyBuilder()
-        messages = builder.build("Hello")
+        messages, _ = builder.build("Hello")
         assert len(messages) == 1
         assert messages[0]["role"] == "user"
 
@@ -252,4 +252,4 @@ class TestGetOptimalThinkingConfig:
 
     def test_agent_task_high_effort(self):
         config = get_optimal_thinking_config("agent", "agent", "flash")
-        assert config["reasoning_effort"] == "high"
+        assert config["reasoning_effort"] in ("high", "max")

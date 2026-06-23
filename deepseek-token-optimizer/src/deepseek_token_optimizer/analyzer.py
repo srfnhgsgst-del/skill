@@ -24,11 +24,14 @@ class SessionSummary:
     cache_hit_rate: float
 
 
-def analyze_session(filepath: str) -> SessionSummary:
+def analyze_session(filepath: str, tag: str = "") -> SessionSummary:
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     records = data.get("records", [])
+    if tag:
+        records = [r for r in records if isinstance(r, dict) and r.get("tag", "") == tag]
+
     if not records:
         return SessionSummary(
             session_id=filepath, model="unknown", requests=0,
@@ -84,3 +87,32 @@ def print_session_comparison(summaries: list[SessionSummary]):
             f"${s.total_cost:>7.4f} {s.cache_hit_rate:>6.1%}"
         )
     print("=" * 80)
+
+
+def tag_summary(filepath: str) -> dict:
+    with open(filepath, "r", encoding="utf-8") as f: data = json.load(f)
+    records = data.get("records", [])
+    tags: dict[str, dict] = {}
+    for r in records:
+        if not isinstance(r, dict): continue
+        t = r.get("tag", "")
+        if not t: continue
+        if t not in tags: tags[t] = {"requests": 0, "total_tokens": 0, "total_cost": 0.0}
+        model = resolve_model(r.get("model", "deepseek-v4-flash"))
+        p = get_pricing(model)
+        tags[t]["requests"] += 1
+        tags[t]["total_tokens"] += r.get("prompt_tokens", 0) + r.get("completion_tokens", 0)
+        tags[t]["total_cost"] += (r.get("cache_hit_tokens", 0) / 1_000_000) * p["cache_hit"]
+        tags[t]["total_cost"] += (r.get("cache_miss_tokens", 0) / 1_000_000) * p["cache_miss"]
+        tags[t]["total_cost"] += (r.get("completion_tokens", 0) / 1_000_000) * p["output"]
+    return tags
+
+
+def print_tag_summary(filepath: str):
+    tags = tag_summary(filepath)
+    print("=" * 50); print("  Cost by Tag"); print("=" * 50)
+    print(f"  {'Tag':<20} {'Requests':>8} {'Tokens':>10} {'Cost':>10}")
+    print("-" * 50)
+    for t, s in sorted(tags.items()):
+        print(f"  {t:<20} {s['requests']:>8} {s['total_tokens']:>10,} ${s['total_cost']:>7.4f}")
+    print("=" * 50)

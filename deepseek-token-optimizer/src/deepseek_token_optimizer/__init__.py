@@ -17,6 +17,6 @@ from .cache_utils import (  # noqa: F401
 )
 from .tokenizer import DeepSeekTokenizer  # noqa: F401
 from .middleware import DeepSeekMiddleware, AsyncDeepSeekMiddleware  # noqa: F401
-from .analyzer import analyze_session, compare_sessions, print_session_comparison  # noqa: F401
+from .analyzer import analyze_session, compare_sessions, print_session_comparison, tag_summary, print_tag_summary  # noqa: F401
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"

@@ -17,9 +17,11 @@ class TokenizerError(Exception):
 
 
 class CacheFriendlyBuilder:
-    def __init__(self, system_prompt: str = "", model_variant: str = "flash"):
+    def __init__(self, system_prompt: str = "", model_variant: str = "flash", auto_warm: bool = False):
         self._system = system_prompt
         self._model_variant = model_variant
+        self._auto_warm = auto_warm
+        self._cache_established = False
 
     @property
     def system_prompt(self) -> str:
@@ -29,8 +31,14 @@ class CacheFriendlyBuilder:
     def estimated_prefix_tokens(self) -> int:
         return MessageOptimizer.estimate_tokens(self._system)
 
+    @property
+    def cache_established(self) -> bool:
+        return self._cache_established
+
     def set_system_prompt(self, prompt: str):
-        self._system = prompt
+        if prompt != self._system:
+            self._system = prompt
+            self._cache_established = False
 
     def build(self, user_content: str, history: Optional[list] = None, thinking_params: Optional[dict] = None) -> tuple[list, dict]:
         messages = []
@@ -66,7 +74,19 @@ class CacheFriendlyBuilder:
             model=model, messages=messages, max_tokens=1,
             extra_body={"thinking": {"type": "disabled"}},
         )
+        self._cache_established = True
         return response.choices[0].message.content
+
+    def try_auto_warm(self, client, model: str = "deepseek-v4-flash") -> bool:
+        if self._cache_established or not self._auto_warm or not self._system:
+            return self._cache_established
+        try:
+            self.warm_cache("Hello", client, model)
+            logger.info("Cache prefix auto-warmed (%d tokens)", self.estimated_prefix_tokens)
+            return True
+        except Exception as e:
+            logger.warning("Auto-warm failed: %s", e)
+            return False
 
 
 def summarize_conversation(messages: list, client, model: str = "deepseek-v4-flash", max_summary_tokens: int = 500, char_limit: int = 2000) -> list:

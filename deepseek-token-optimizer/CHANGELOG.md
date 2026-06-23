@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0] — 2026-06-23
+
+### Added
+- `DeepSeekMiddleware` and `AsyncDeepSeekMiddleware` — `auto_summarize=True` and `summarize_threshold` for automatic conversation summarization
+- `CacheFriendlyBuilder` — `auto_warm=True` and `try_auto_warm()` for automatic cache prefix warming
+- `analyze_session(filepath, tag="")` — optional tag filtering in session analysis
+- `tag_summary(filepath)` and `print_tag_summary(filepath)` — breakdown of cost by tag
+- `CacheFriendlyBuilder.cache_established` property and auto-invalidation on `set_system_prompt()`
+- Middleware `tag` parameter and `set_tag()` method for per-request tag propagation
+
+### Changed
+- Version bumped to 1.3.0
+
 ## [1.2.0] — 2026-06-14
 
 ### Added
