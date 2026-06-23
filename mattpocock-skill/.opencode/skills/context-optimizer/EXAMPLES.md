@@ -114,7 +114,62 @@ Without priority tags, "temp var rename" is as prominent as "router choice".
 After session end, P2 entry archived. Start of next session only sees P0.
 ```
 
-## 8. Response Format Standards
+## 8. Tool-Based State Management
+
+### Before (reading entire file — expensive)
+```
+AI: Let me read the full MEMORY.md to find the router decision...
+[reads 500 lines, wastes ~1000 tokens of context]
+```
+
+### After (targeted grep — cheap)
+```
+AI: [grep "TanStack" .opencode/MEMORY.md → finds 1 line]
+→ router decision: TanStack over React Router v6 (file-based routing)
+[reads 1 line, uses ~10 tokens]
+```
+
+## 9. Compact Before/After
+
+### Before (MEMORY.md has 8 old snapshots, ~350 lines)
+```
+## 2026-06-14
+### Session Snapshot
+**Objective:** Setup project scaffolding
+**Done:** init, deps install, folder structure
+...
+
+## 2026-06-15
+### Session Snapshot
+**Objective:** Add auth module
+**Done:** login form, token storage
+...
+(6 more full snapshots taking up ~250 lines)
+```
+
+### After (compacted into archive block, ~80 lines)
+```
+## Archived (2026-06-14 — 2026-06-20)
+### Key Decisions
+- 2026-06-14: stack — React + TS + Vite
+- 2026-06-15: auth — JWT based, stored in httpOnly cookie
+- 2026-06-17: token — stored in httpOnly cookie
+
+### Objectives
+- Setup project scaffolding
+- Add auth module
+- Connect to payment API
+
+---
+
+## 2026-06-21
+### Session Snapshot
+**Objective:** Build checkout page
+...
+(only last 3 snapshots preserved in full)
+```
+
+## 10. Response Format Standards
 
 | Context | Format |
 |---------|--------|

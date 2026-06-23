@@ -98,6 +98,52 @@ function prune({ keepLast = 5, minPriority = 'P1' } = {}) {
   return `Pruned ${toRemove} old snapshot(s), kept last ${keepLast}.`;
 }
 
+function compact() {
+  const { raw } = read();
+  if (!raw) return 'No MEMORY.md found';
+
+  const lines = raw.split('\n');
+  const snapshotHeaders = [];
+  lines.forEach((l, i) => {
+    if (l.startsWith('## ') && l.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      snapshotHeaders.push(i);
+    }
+  });
+
+  if (snapshotHeaders.length <= 3) return 'Less than 3 snapshots, nothing to compact.';
+
+  const keepCount = 3;
+  const compactEnd = snapshotHeaders[snapshotHeaders.length - keepCount];
+  const compactSection = lines.slice(0, compactEnd).join('\n');
+  const recentSection = lines.slice(compactEnd).join('\n');
+
+  const summary = [];
+  const headerMatch = compactSection.match(/## \d{4}-\d{2}-\d{2}/);
+  const firstDate = compactSection.match(/(\d{4}-\d{2}-\d{2})/);
+  const lastDate = lines.slice(0, snapshotHeaders[snapshotHeaders.length - keepCount])
+    .join('\n').match(/(\d{4}-\d{2}-\d{2})(?!.*\d{4}-\d{2}-\d{2})/s);
+
+  summary.push(`## Archived (${firstDate ? firstDate[1] : '?'} — ${lastDate ? lastDate[1] : '?'})`);
+
+  const decisions = compactSection.match(/- \d{4}-\d{2}-\d{2}.*/g);
+  if (decisions) {
+    summary.push('');
+    summary.push('### Key Decisions');
+    decisions.forEach(d => summary.push(d));
+  }
+
+  const objectives = compactSection.match(/\*\*Objective:\*\*.*/g);
+  if (objectives) {
+    summary.push('');
+    summary.push('### Objectives');
+    objectives.forEach(o => summary.push(`- ${o.replace('**Objective:**', '').trim()}`));
+  }
+
+  const newContent = summary.join('\n') + '\n\n---\n\n' + recentSection;
+  fs.writeFileSync(MEMORY_FILE, newContent);
+  return `Compacted ${snapshotHeaders.length - keepCount} old snapshots into archive summary.`;
+}
+
 function init() {
   const dir = path.dirname(MEMORY_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -160,6 +206,9 @@ switch (cmd) {
   case 'prune':
     console.log(prune({ keepLast: parseInt(args[0], 10) || 5 }));
     break;
+  case 'compact':
+    console.log(compact());
+    break;
   case 'init':
     console.log(init());
     break;
@@ -175,5 +224,6 @@ switch (cmd) {
       `  search <keyword>                  Find matching lines`,
       `  status                            Show token usage and entry counts`,
       `  prune [keepLast=5]                Remove old snapshots, keep N recent`,
+      `  compact                           Summarize old snapshots into archive block`,
     ].join('\n'));
 }

@@ -73,6 +73,38 @@ Session 3: Read A + B → work → Snapshot C ──→ MEMORY.md (A + B + C)
 
 Each session starts by reading the full chain, giving instant project-wide context without re-derivation.
 
+## Tool-Based State Queries
+
+Use OpenCode's native tools instead of reading full files:
+
+| Goal | Tool + Pattern |
+|------|----------------|
+| Find P0 decisions | `grep "P0" .opencode/MEMORY.md` |
+| Get last snapshot | `grep "Session Snapshot" .opencode/MEMORY.md` + read last match |
+| Count MEMORY.md lines | `bash` → `(Get-Content .opencode/MEMORY.md).Length` |
+| Find active file | `grep "Active File:" .opencode/MEMORY.md` (last match = current) |
+| List pending tasks | `grep "- \[ \]" .opencode/MEMORY.md` |
+| Read objective only | `grep "Active Objective" .opencode/MEMORY.md` — read 2 lines |
+| Append snapshot | `read` last 3 lines of MEMORY.md → `edit` to append |
+
+## Compaction Decision Tree
+
+```
+MEMORY.md > 200 lines?
+├─ Yes → Need to compact?
+│   ├─ Snapshots > 3 → Run compact (summarize old snapshots)
+│   └─ Snapshots ≤ 3 → No action needed
+├─ No → Continue monitoring
+│
+Objective changed?
+├─ Yes → Snapshot current state first, then update objective
+└─ No → Continue
+
+P2 entries > 10?
+├─ Yes → Archive old P2s (they're transient)
+└─ No → Continue
+```
+
 ## Prompt Efficiency Templates
 
 ### Minimal Task Prompt

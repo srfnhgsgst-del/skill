@@ -6,76 +6,94 @@ description: Compresses long conversations into structured state, tracks decisio
 # Context Optimizer
 
 ## When to Trigger
-- Conversation > 20 turns or visible token pressure
-- Major phase/subtask completed
-- User says "continue", "resume", "remember where we left off"
-- Repeated explanations or boilerplate detected
-- Session restart or context reset
+- 20+ turns or token pressure
+- Major phase done
+- User says "continue"/"resume"
+- Boilerplate detected
+- Session reset
 
 ## Workflows
 
-### 1. Context Compression (Snapshot Protocol)
-After every major milestone or every ~15 exchanges:
-
-1. Generate **Snapshot**:
+### 1. Snapshot Protocol
+After milestone or every ~15 exchanges:
+1. Generate:
    ```
-   **Objective:** [1-line goal]
-   **Done:** [completed items, max 5]
-   **Decisions:** [X over Y because Z, max 3]
-   **Active File:** [current file]
-   **Blockers:** [open issues]
-   **Next:** [immediate action]
+   **Objective:** [1-line]
+   **Done:** [max 5]
+   **Decisions:** [X over Y, max 3]
+   **Active File:** [file]
+   **Blockers:** [issues]
+   **Next:** [action]
    ```
-2. Append snapshot to `.opencode/MEMORY.md`.
-3. On new task, read MEMORY.md first — do not re-derive saved decisions.
+2. Append to `.opencode/MEMORY.md` via `edit` tool.
+3. New task: read MEMORY.md first.
 
 ### 2. Lean Communication
-- **Token budget**: responses under 200 tokens (excl. code blocks).
-- **Reference code** as `file.ts:42`, don't quote blocks.
-- **Use lists** over paragraphs for multi-item answers.
-- **Banned phrases**: "Sure, I can help", "Let me know if", "Here is the result", "Based on the information", "I hope this helps", "Let me explain", re-stating user's question verbatim.
+- **< 200 tokens** per response (excl. code)
+- Reference code as `file.ts:42`
+- Lists > paragraphs
+- **Banned**: "Sure, I can help", "Let me know if", "Here is the result", "Based on the information", "I hope this helps", "Let me explain", restating user question
 
 ### 3. State File Protocol
-Maintain `.opencode/MEMORY.md`:
-
 ```markdown
 ## Active Objective
 [one sentence]
 
 ## Implementation Status
 | File | Purpose | Status |
-|------|---------|--------|
 
 ## Key Decisions
-- YYYY-MM-DD: topic — rationale (1 line)
+- YYYY-MM-DD [P0-P2]: topic — rationale
 
 ## Pending Tasks
 - [ ] task
 ```
+**P0** (architecture) — permanent. **P1** (active) — cross-session. **P2** (transient) — session-scoped.
 
-**Rules**: Write after every feature/decision pivot. Read first after context reset. Append only — never delete.
+### 4. Tool-Based State Management
+| Action | Tool to Use |
+|--------|-------------|
+| Read state | `read .opencode/MEMORY.md` |
+| Append snapshot | `edit` — match last line, append new content |
+| Search decisions | `grep` with keyword or `P0` tag |
+| Update status table | `edit` — replace target row |
+| Check size | `bash` with `Measure-Object -Line` |
+| Init file | `write` with template |
 
-**Priority-Based Retention**: Tag entries with priority — `P0` (critical architecture), `P1` (active decisions), `P2` (transient task state). Only P0/P1 survive across session restarts; P2 is scoped to current session.
+Prefer `grep` over reading full file when searching specific sections.
 
-### 4. Context Restoration
-When resuming after a reset:
+### 5. Auto-Compaction
+When MEMORY.md > 200 lines or ~3K tokens:
+1. Group snapshots older than last 3 into summary block.
+2. Prefix with `## Archived (YYYY-MM-DD — YYYY-MM-DD)`.
+3. Keep only: objective, decisions, final state per snapshot.
+4. Discard per-step details, error logs, exploration branches.
 
-1. Read `.opencode/MEMORY.md` → extract P0/P1 entries.
-2. Read the active file to rebuild mental model.
-3. Reply with a **Restoration Summary**:
+### 6. Context Fingerprint
+Generate when switching tasks:
+```
+Fingerprint: router=TanStack|state=Zustand|file=Login.tsx|task=auth
+```
+Store in MEMORY.md. Restores full context in one line.
+
+### 7. Context Restoration
+After reset:
+1. Read MEMORY.md.
+2. Read active file (from snapshot).
+3. Reply:
    ```
    Restored: [objective]
-   State: [current file + status]
-   Next: [immediate step from MEMORY.md]
+   Fingerprint: [key=val|key=val]
+   Next: [immediate step]
    ```
-4. Do **not** ask the user "where were we?" — the state file answers this.
+4. Never ask "where were we?" — MEMORY.md answers this.
 
 ## Checklist
-- [ ] Can I answer in < 3 sentences?
-- [ ] Am I using a banned phrase?
-- [ ] Did I check MEMORY.md first?
-- [ ] Should I write a snapshot now?
+- [ ] Under 3 sentences?
+- [ ] Banned phrase used?
+- [ ] MEMORY.md checked?
+- [ ] Snapshot needed?
+- [ ] MEMORY.md > 200 lines → compact?
 
 ## Advanced
-See [EXAMPLES.md](EXAMPLES.md) for before/after demos.
-See [REFERENCE.md](REFERENCE.md) for token economics and advanced strategies.
+See [EXAMPLES.md](EXAMPLES.md), [REFERENCE.md](REFERENCE.md).
