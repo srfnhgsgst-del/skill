@@ -1,9 +1,8 @@
-from datetime import datetime
 from typing import Optional
 import httpx
 
-from ecommerce_ops_skill.platform import Platform, DataSource
-from ecommerce_ops_skill.models import RankingItem, SalesEstimate, KeywordData
+from ecommerce_ops_skill.platform import Platform
+from ecommerce_ops_skill.models import KeywordData
 
 
 class XiaohongshuClient:

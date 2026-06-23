@@ -1,0 +1,5 @@
+2026-06-16 19:10:15,243 [INFO] Starting StockFund-Analyzer API v2.0 on port 8000...
+INFO:     Started server process [85140]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

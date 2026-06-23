@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StockFund Analyzer v3.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.0/umd/Recharts.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#0a0a0f;color:#d4d4d8;font-family:'Consolas','Courier New',monospace;overflow:hidden}
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-track{background:#0f172a}
+        ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+    </style>
+</head>
+<body>
+<div id="root"><div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#52525b">Loading...</div></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+const R = Recharts;
+const { ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis,
+    CartesianGrid, Tooltip, LineChart, BarChart, ReferenceLine, Customized } = R;
+
+const API = "http://localhost:9200/api";
+const LS_KEY = "stockfund_watchlist";
+
+const PERIODS = [
+    {l:"1天",v:"1d",i:"5m"},{l:"5天",v:"5d",i:"15m"},{l:"1月",v:"1mo",i:"1h"},
+    {l:"3月",v:"3mo",i:"1d"},{l:"6月",v:"6mo",i:"1d"},{l:"1年",v:"1y",i:"1d"},{l:"2年",v:"2y",i:"1wk"},
+];
+
+const INDICATORS = [
+    {k:"ma5",l:"MA5",c:"#f59e0b"},{k:"ma10",l:"MA10",c:"#06b6d4"},{k:"ma20",l:"MA20",c:"#a855f7"},{k:"ma60",l:"MA60",c:"#ef4444"},
+    {k:"bb_upper",l:"BB上",c:"#22c55e"},{k:"bb_mid",l:"BB中",c:"#6b7280"},{k:"bb_lower",l:"BB下",c:"#ef4444"},
+];
+
+const DEFAULT_WATCHLIST = [
+    {symbol:"AAPL",name:"Apple",price:null,change_percent:null},
+    {symbol:"TSLA",name:"Tesla",price:null,change_percent:null},
+    {symbol:"NVDA",name:"NVIDIA",price:null,change_percent:null},
+];
+
+function fmt(n) {
+    if (n==null) return "--";
+    const a=Math.abs(n);
+    if (a>=1e12) return (n/1e12).toFixed(2)+"T";
+    if (a>=1e9) return (n/1e9).toFixed(2)+"B";
+    if (a>=1e6) return (n/1e6).toFixed(2)+"M";
+    if (a>=1e3) return (n/1e3).toFixed(2)+"K";
+    return Number(n).toFixed(2);
+}
+function fmtd(v){if(v==null)return"--";return v.toFixed(4)}
+function fmt2(v){if(v==null)return"--";return v.toFixed(2)}
+function col(v){if(v==null)return"#52525b";return v>=0?"#4ade80":"#f87171"}
+
+function loadWatchlist(){
+    try{const x=localStorage.getItem(LS_KEY);return x?JSON.parse(x):DEFAULT_WATCHLIST}catch{return DEFAULT_WATCHLIST}
+}
+function saveWatchlist(w){try{localStorage.setItem(LS_KEY,JSON.stringify(w))}catch{}}
+
+// ================== COMPONENTS ==================
+
+function MarketTicker({indices}){
+    if(!indices||!indices.length)return<div style={{background:"#111118",borderBottom:"1px solid #1f1f2e",padding:"6px 16px",fontSize:11,color:"#52525b"}}>Loading indices...</div>;
+    return <div style={{background:"#111118",borderBottom:"1px solid #1f1f2e",padding:"6px 16px",display:"flex",gap:24,overflowX:"auto",whiteSpace:"nowrap",fontSize:11}}>
+        {indices.map(idx=><div key={idx.symbol} style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{color:"#71717a"}}>{idx.name}</span>
+            <span style={{fontWeight:600}}>{idx.price!=null?idx.price.toLocaleString():"--"}</span>
+            {idx.change!=null&&<span style={{color:col(idx.change)}}>{idx.change>=0?"↑":"↓"} {idx.change_percent!=null?idx.change_percent.toFixed(2)+"%":""}</span>}
+        </div>)}
+    </div>;
+}
+
+function StatCard({label,value,color}){return<div style={{background:"rgba(17,17,24,0.6)",borderRadius:8,padding:10,border:"1px solid rgba(31,31,46,0.5)"}}>
+    <div style={{fontSize:9,color:"#52525b",letterSpacing:1,marginBottom:4}}>{label}</div>
+    <div style={{fontSize:13,fontWeight:600,color:color||"#d4d4d8"}}>{value}</div>
+</div>}
+
+function SearchBox({onSelect}){
+    const [q,setQ]=useState("");const [results,setResults]=useState([]);const [o,setO]=useState(false);const ref=useRef(null);
+    useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setO(false)};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h)},[]);
+    useEffect(()=>{if(q.length<1){setResults([]);return}const t=setTimeout(async()=>{try{const r=await fetch(API+"/search?q="+encodeURIComponent(q)+"&limit=8");if(r.ok)setResults(await r.json())}catch{}},300);return()=>clearTimeout(t)},[q]);
+    const kd=e=>{if(e.key==="Enter"&&q.trim()){onSelect(q.trim().toUpperCase());setQ("");setO(false)}};
+    return <div ref={ref} style={{position:"relative",padding:"8px 12px"}}>
+        <input type="text" value={q} onChange={e=>{setQ(e.target.value);setO(true)}} onFocus={()=>{if(results.length)setO(true)}} onKeyDown={kd}
+               placeholder="Search symbol..." style={{width:"100%",background:"#18181b",border:"1px solid #27272a",borderRadius:4,padding:"6px 8px",fontSize:11,color:"#d4d4d8",outline:"none",fontFamily:"inherit",caretColor:"#3b82f6"}}/>
+        {o&&results.length>0&&<div style={{position:"absolute",left:12,right:12,top:"100%",marginTop:2,background:"#18181b",border:"1px solid #27272a",borderRadius:4,zIndex:100,maxHeight:180,overflowY:"auto"}}>
+            {results.map(r=><div key={r.symbol} onClick={()=>{onSelect(r.symbol);setQ("");setO(false)}} style={{padding:"6px 10px",cursor:"pointer",fontSize:11,display:"flex",justifyContent:"space-between",hover:{background:"#1f1f2e"}}}><span style={{color:"#d4d4d8",fontWeight:500}}>{r.symbol}</span><span style={{color:"#52525b"}}>{r.name}</span></div>)}
+        </div>}
+    </div>;
+}
+
+function WatchlistComp({stocks,onSelect,onRemove,selected}){
+    return <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+        <div style={{padding:"8px 12px",fontSize:10,color:"#52525b",fontWeight:600,borderBottom:"1px solid #1f1f2e",letterSpacing:1,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>WATCHLIST</span>
+            <span style={{fontSize:9,color:"#3f3f46"}}>{stocks.length}</span>
+        </div>
+        <div style={{flex:1,overflowY:"auto"}}>
+            {stocks.length===0?<div style={{color:"#3f3f46",fontSize:10,textAlign:"center",marginTop:16}}>Search to add symbols</div>
+            :stocks.map(s=><div key={s.symbol} style={{display:"flex",alignItems:"center",borderBottom:"1px solid #1f1f2e",background:selected===s.symbol?"rgba(59,130,246,0.08)":"transparent",borderLeft:selected===s.symbol?"2px solid #3b82f6":"2px solid transparent"}}>
+                <div onClick={()=>onSelect(s.symbol)} style={{flex:1,padding:"7px 10px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11}}>
+                    <div><div style={{color:"#d4d4d8",fontWeight:500}}>{s.symbol}</div><div style={{color:"#52525b",fontSize:9,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div></div>
+                    <div style={{textAlign:"right"}}><div style={{color:"#d4d4d8"}}>{s.price!=null?s.price.toFixed(2):"--"}</div>{s.change_percent!=null&&<div style={{fontSize:9,color:col(s.change_percent)}}>{(s.change_percent>=0?"+":"")+s.change_percent.toFixed(2)+"%"}</div>}</div>
+                </div>
+                <div onClick={()=>onRemove(s.symbol)} style={{padding:"0 8px",cursor:"pointer",color:"#3f3f46",fontSize:11,lineHeight:"1"}} title="Remove">x</div>
+            </div>)}
+        </div>
+    </div>;
+}
+
+// Candlestick overlay that renders OHLC bars on top of the price chart
+function CandleOverlay({xAxisMap,yAxisMap,data}){
+    if(!xAxisMap||!yAxisMap||!data||!data.length)return null;
+    const xs=xAxisMap[0].scale;const ys=yAxisMap[0].scale;
+    const w=xs&&data.length>1?Math.abs(xs(data[0].date)-xs(data[1].date))*0.6:6;
+    return <g>{data.filter(d=>d.open!=null).map((d,i)=>{
+        const cx=xs(d.date);if(cx==null)return null;
+        const oy=ys(d.open);const cy=ys(d.close);const hy=ys(d.high);const ly=ys(d.low);
+        if(oy==null||cy==null)return null;
+        const up=d.close>=d.open;const c=up?"#4ade80":"#f87171";
+        return <g key={i}>
+            <line x1={cx} y1={hy||cy} x2={cx} y2={ly||oy} stroke={c} strokeWidth={1}/>
+            <rect x={cx-w/2} y={Math.min(oy,cy)} width={Math.max(w,2)} height={Math.max(Math.abs(cy-oy),1)} fill={c} stroke={c} strokeWidth={0.5} rx={0.5}/>
+        </g>;
+    })}</g>;
+}
+
+function App(){
+    const [symbol,setSymbol]=useState("AAPL");
+    const [data,setData]=useState(null);
+    const [history,setHistory]=useState(null);
+    const [indices,setIndices]=useState([]);
+    const [loading,setLoading]=useState(false);
+    const [error,setError]=useState("");
+    const [period,setPeriod]=useState("1mo");
+    const [visInd,setVisInd]=useState(new Set(["ma5","ma10","ma20"]));
+    const [cd,setCd]=useState(30);
+    const [candleMode,setCandleMode]=useState(false);
+    const [watchlistStocks,setWatchlistStocks]=useState(loadWatchlist);
+
+    // Persist watchlist
+    useEffect(()=>{saveWatchlist(watchlistStocks)},[watchlistStocks]);
+
+    const toggleInd=useCallback(k=>{setVisInd(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n})},[]);
+
+    const fetchData=useCallback(async sym=>{
+        setLoading(true);setError("");
+        try{
+            const p=PERIODS.find(x=>x.v===period)||PERIODS[2];
+            const [r1,r2]=await Promise.all([
+                fetch(API+"/stock/"+sym),
+                fetch(API+"/history/"+sym+"?period="+period+"&interval="+p.i+"&indicators=true"),
+            ]);
+            if(!r1.ok)throw new Error("Fetch failed: "+r1.status);
+            setData(await r1.json());
+            if(r2.ok)setHistory(await r2.json());
+        }catch(e){setError(e.message)}finally{setLoading(false)}
+    },[period]);
+
+    const fetchIndices=useCallback(async()=>{try{const r=await fetch(API+"/market_overview");if(r.ok)setIndices((await r.json()).indices)}catch{}},[]);
+
+    const wlRef=useRef(watchlistStocks);wlRef.current=watchlistStocks;
+    const updateWatchlist=useCallback(async()=>{
+        const s=wlRef.current;if(!s.length)return;
+        try{const r=await fetch(API+"/batch?symbols="+encodeURIComponent(s.map(x=>x.symbol).join(",")));if(r.ok)setWatchlistStocks((await r.json()).results)}catch{}
+    },[]);
+
+    useEffect(()=>{fetchData(symbol);fetchIndices();updateWatchlist()},[symbol,period]);
+    useEffect(()=>{fetchIndices()},[]);
+    useEffect(()=>{setCd(30);const i=setInterval(()=>{setCd(p=>{if(p<=1){fetchData(symbol);fetchIndices();updateWatchlist();return 30}return p-1})},1000);return()=>clearInterval(i)},[symbol,period]);
+
+    const handleSelect=useCallback(sym=>{
+        setSymbol(sym);
+        setWatchlistStocks(prev=>prev.some(x=>x.symbol===sym)?prev:[...prev,{symbol:sym,name:sym,price:null,change_percent:null}]);
+    },[]);
+    const handleRemove=useCallback(sym=>{setWatchlistStocks(prev=>prev.filter(x=>x.symbol!==sym))},[]);
+
+    const histData=history?.data||[];
+    const minV=useMemo(()=>histData.length?Math.min(...histData.map(d=>Math.min(d.low,...INDICATORS.filter(i=>visInd.has(i.k)).map(i=>d[i.k]??1e10)))):0,[histData,visInd]);
+    const maxV=useMemo(()=>histData.length?Math.max(...histData.map(d=>Math.max(d.high,...INDICATORS.filter(i=>visInd.has(i.k)).map(i=>d[i.k]??-1e10)))):0,[histData,visInd]);
+
+    // CSV export
+    const exportCSV=()=>{
+        if(!histData.length)return;
+        const h=["date,open,high,low,close,volume,ma5,ma10,ma20,ma60,rsi14"];
+        const rows=histData.map(d=>`"${d.date}",${d.open??""},${d.high??""},${d.low??""},${d.close??""},${d.volume??""},${d.ma5??""},${d.ma10??""},${d.ma20??""},${d.ma60??""},${d.rsi14??""}`);
+        const blob=new Blob([h.join("\n")+"\n"+rows.join("\n")],{type:"text/csv;charset=utf-8"});
+        const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=symbol+"_"+period+".csv";a.click();URL.revokeObjectURL(a.href);
+    };
+
+    // ======== RENDER ========
+    return <div style={{height:"100vh",display:"flex",flexDirection:"column"}}>
+        <MarketTicker indices={indices}/>
+
+        <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+            {/* Sidebar */}
+            <aside style={{width:180,background:"rgba(17,17,24,0.5)",borderRight:"1px solid #1f1f2e",display:"flex",flexDirection:"column",flexShrink:0}}>
+                <SearchBox onSelect={handleSelect}/>
+                <WatchlistComp stocks={watchlistStocks} onSelect={handleSelect} onRemove={handleRemove} selected={symbol}/>
+                <div style={{padding:"8px",borderTop:"1px solid #1f1f2e",fontSize:10,color:"#3f3f46",textAlign:"center"}}>Auto-refresh: {cd}s</div>
+            </aside>
+
+            {/* Main */}
+            <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+                {error&&<div style={{background:"rgba(127,29,29,0.3)",borderBottom:"1px solid #991b1b",color:"#fca5a5",padding:"8px 16px",fontSize:12}}>{error}</div>}
+
+                {loading&&!data?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#52525b"}}>Loading...</div>
+                :data?<div style={{flex:1,overflowY:"auto",padding:16}}>
+
+                    {/* Stock Header */}
+                    <div style={{display:"flex",alignItems:"baseline",gap:12,marginBottom:12}}>
+                        <span style={{fontSize:20,fontWeight:700,color:"#e4e4e7"}}>{data.symbol}</span>
+                        <span style={{fontSize:12,color:"#52525b"}}>{data.name}</span>
+                        <span style={{fontSize:28,fontWeight:700,marginLeft:16}}>{data.price!=null?data.price.toFixed(2):"--"}</span>
+                        <span style={{fontSize:16,fontWeight:600,color:col(data.change)}}>{(data.change>=0?"+":"")+data.change} ({(data.change_percent>=0?"+":"")+data.change_percent}%)</span>
+                        <span style={{fontSize:11,color:"#52525b"}}>{data.currency}</span>
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:8,marginBottom:12}}>
+                        <StatCard label="Open" value={fmt2(data.open)}/>
+                        <StatCard label="High" value={fmt2(data.high)} color="#4ade80"/>
+                        <StatCard label="Low" value={fmt2(data.low)} color="#f87171"/>
+                        <StatCard label="Volume" value={fmt(data.volume)} color="#60a5fa"/>
+                        <StatCard label="Mkt Cap" value={fmt(data.market_cap)}/>
+                        <StatCard label="PE" value={fmt2(data.pe_ratio)}/>
+                        <StatCard label="Div Yield" value={data.dividend_yield!=null?(data.dividend_yield*100).toFixed(2)+"%":"--"}/>
+                        <StatCard label="52W" value={data.fifty_two_week_high!=null?data.fifty_two_week_high+"/"+data.fifty_two_week_low:"--"} color="#fbbf24"/>
+                    </div>
+
+                    {/* Indicator Badges */}
+                    {history?.latest_indicators&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12,alignItems:"center"}}>
+                        <span style={{fontSize:9,padding:"2px 6px",borderRadius:8,background:"#18181b",border:"1px solid #27272a",color:"#a1a1aa"}}>RSI(14): <span style={{color:history.latest_indicators.rsi14>70?"#f87171":history.latest_indicators.rsi14<30?"#4ade80":"#d4d4d8"}}>{history.latest_indicators.rsi14}</span></span>
+                        {[["MA5","#f59e0b"],["MA10","#06b6d4"],["MA20","#a855f7"]].map(([l,c])=><span key={l} style={{fontSize:9,padding:"2px 6px",borderRadius:8,background:"#18181b",border:"1px solid #27272a",color:c}}>{l}: {history.latest_indicators[l.toLowerCase()]}</span>)}
+                        <span style={{fontSize:9,padding:"2px 6px",borderRadius:8,background:"#18181b",border:"1px solid #27272a",color:"#a78bfa"}}>MACD: <span style={{color:history.latest_indicators.macd_bar>=0?"#4ade80":"#f87171"}}>{fmt2(history.latest_indicators.macd_dif)} / {fmt2(history.latest_indicators.macd_bar)}</span></span>
+                        <button onClick={exportCSV} style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:"#1e3a5f",border:"1px solid #2563eb",color:"#93c5fd",cursor:"pointer",fontFamily:"inherit"}}>Export CSV</button>
+                    </div>}
+
+                    {/* Period Buttons + Candle toggle */}
+                    <div style={{display:"flex",gap:4,marginBottom:12,alignItems:"center"}}>
+                        {PERIODS.map(p=><button key={p.v} onClick={()=>setPeriod(p.v)} style={{padding:"4px 10px",fontSize:11,borderRadius:4,border:"none",cursor:"pointer",background:period===p.v?"#2563eb":"#27272a",color:period===p.v?"#fff":"#71717a",fontFamily:"inherit"}}>{p.l}</button>)}
+                        <div style={{flex:1}}/>
+                        <button onClick={()=>setCandleMode(!candleMode)} style={{padding:"4px 10px",fontSize:11,borderRadius:4,border:candleMode?"1px solid #f59e0b":"1px solid #27272a",cursor:"pointer",background:candleMode?"rgba(245,158,11,0.1)":"transparent",color:candleMode?"#f59e0b":"#52525b",fontFamily:"inherit"}}>{candleMode?"Candle":"Area"}</button>
+                    </div>
+
+                    {/* Price Chart */}
+                    {histData.length>0&&<div style={{background:"rgba(17,17,24,0.6)",borderRadius:10,border:"1px solid rgba(31,31,46,0.5)",padding:14,marginBottom:12,height:340}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                            <span style={{fontSize:13,fontWeight:600,color:"#71717a"}}>Price{candleMode?" (OHLC)":""}</span>
+                            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                                {INDICATORS.map(ind=><button key={ind.k} onClick={()=>toggleInd(ind.k)} style={{fontSize:9,padding:"2px 6px",borderRadius:12,border:"1px solid",borderColor:visInd.has(ind.k)?ind.c:"#27272a",background:"transparent",color:visInd.has(ind.k)?ind.c:"#3f3f46",cursor:"pointer",fontFamily:"inherit"}}>{ind.l}</button>)}
+                            </div>
+                        </div>
+                        <ResponsiveContainer width="100%" height="88%">
+                            <ComposedChart data={histData} syncId="s">
+                                <defs><linearGradient id="g" x1={0} y1={0} x2={0} y2={1}><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0.01}/></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+                                <XAxis dataKey="date" stroke="#475569" tick={{fontSize:10}} interval="preserveStartEnd"/>
+                                <YAxis stroke="#475569" domain={[minV*0.995,maxV*1.005]} tick={{fontSize:10}}/>
+                                <Tooltip content={<CustomTooltip histData={histData}/>}/>
+                                {candleMode
+                                    ? <Customized component={(p)=><CandleOverlay {...p} data={histData}/>}/>
+                                    : <Area type="monotone" dataKey="close" stroke="#3b82f6" fill="url(#g)" strokeWidth={2} dot={false}/>
+                                }
+                                {!candleMode&&INDICATORS.filter(i=>visInd.has(i.k)).map(ind=>
+                                    <Line key={ind.k} type="monotone" dataKey={ind.k} stroke={ind.c} strokeWidth={1.5} dot={false} strokeDasharray={ind.k.includes("bb")?"4 2":undefined}/>
+                                )}
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>}
+
+                    {/* MACD Chart */}
+                    {histData.length>0&&histData.some(d=>d.macd_dif!=null)&&<div style={{background:"rgba(17,17,24,0.6)",borderRadius:10,border:"1px solid rgba(31,31,46,0.5)",padding:14,marginBottom:12,height:170}}>
+                        <span style={{fontSize:13,fontWeight:600,color:"#71717a",marginBottom:8,display:"block"}}>MACD (12,26,9)</span>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <ComposedChart data={histData} syncId="s">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+                                <XAxis dataKey="date" stroke="#475569" tick={{fontSize:10}}/>
+                                <YAxis stroke="#475569" tick={{fontSize:10}}/>
+                                <Tooltip contentStyle={{background:"#1f2937",borderColor:"#374151",color:"#fff",fontSize:11}}/>
+                                <Bar dataKey="macd_bar" fill="#3b82f6" opacity={0.4} radius={[1,1,0,0]}>
+                                    {histData.map((d,i)=><R.Cell key={i} fill={(d.macd_bar||0)>=0?"#4ade80":"#f87171"} opacity={0.5}/>)}
+                                </Bar>
+                                <Line type="monotone" dataKey="macd_dif" stroke="#3b82f6" strokeWidth={1.5} dot={false}/>
+                                <Line type="monotone" dataKey="macd_dea" stroke="#f59e0b" strokeWidth={1.5} dot={false}/>
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>}
+
+                    {/* Volume Chart */}
+                    {histData.length>0&&<div style={{background:"rgba(17,17,24,0.6)",borderRadius:10,border:"1px solid rgba(31,31,46,0.5)",padding:14,marginBottom:12,height:140}}>
+                        <span style={{fontSize:13,fontWeight:600,color:"#71717a"}}>Volume</span>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <BarChart data={histData} syncId="s">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+                                <XAxis dataKey="date" stroke="#475569" tick={{fontSize:10}}/>
+                                <YAxis stroke="#475569" tick={{fontSize:10}}/>
+                                <Tooltip contentStyle={{background:"#1f2937",borderColor:"#374151",color:"#fff",fontSize:11}}/>
+                                <Bar dataKey="volume" fill="#3b82f6" opacity={0.4} radius={[1,1,0,0]}/>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>}
+
+                    {/* RSI Chart */}
+                    {histData.length>0&&histData.some(d=>d.rsi14!=null)&&<div style={{background:"rgba(17,17,24,0.6)",borderRadius:10,border:"1px solid rgba(31,31,46,0.5)",padding:14,height:150}}>
+                        <span style={{fontSize:13,fontWeight:600,color:"#71717a"}}>RSI(14)</span>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <LineChart data={histData} syncId="s">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+                                <XAxis dataKey="date" stroke="#475569" tick={{fontSize:10}}/>
+                                <YAxis stroke="#475569" domain={[0,100]} tick={{fontSize:10}} ticks={[0,30,50,70,100]}/>
+                                <Tooltip contentStyle={{background:"#1f2937",borderColor:"#374151",color:"#fff",fontSize:11}}/>
+                                <ReferenceLine y={70} stroke="#ef4444" strokeWidth={1} strokeDasharray="3 3"/>
+                                <ReferenceLine y={30} stroke="#22c55e" strokeWidth={1} strokeDasharray="3 3"/>
+                                <Line type="monotone" dataKey="rsi14" stroke="#a855f7" strokeWidth={1.5} dot={false}/>
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>}
+
+                </div>:<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#3f3f46"}}>Search a symbol to begin</div>}
+            </main>
+        </div>
+    </div>;
+}
+
+// Custom tooltip for price chart
+function CustomTooltip({active,payload,label,histData}){
+    if(!active||!payload||!payload.length)return null;
+    const d=payload[0].payload;
+    return <div style={{background:"#1f2937",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",fontSize:11,boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>
+        <div style={{color:"#9ca3af",marginBottom:4}}>{d.date}</div>
+        <div style={{display:"grid",gridTemplateColumns:"auto auto",gap:"2px 12px"}}>
+            {d.open!=null&&<><span style={{color:"#71717a"}}>O:</span><span style={{textAlign:"right"}}>{d.open}</span></>}
+            {d.high!=null&&<><span style={{color:"#71717a"}}>H:</span><span style={{textAlign:"right",color:"#4ade80"}}>{d.high}</span></>}
+            {d.low!=null&&<><span style={{color:"#71717a"}}>L:</span><span style={{textAlign:"right",color:"#f87171"}}>{d.low}</span></>}
+            {d.close!=null&&<><span style={{color:"#71717a"}}>C:</span><span style={{textAlign:"right",fontWeight:600,color:"#60a5fa"}}>{d.close}</span></>}
+            {d.volume!=null&&<><span style={{color:"#71717a"}}>Vol:</span><span style={{textAlign:"right"}}>{fmt(d.volume)}</span></>}
+        </div>
+        {d.rsi14!=null&&<div style={{marginTop:3,color:"#9ca3af"}}>RSI(14): <span style={{color:d.rsi14>70?"#f87171":d.rsi14<30?"#4ade80":"#d4d4d8"}}>{d.rsi14}</span></div>}
+        {d.macd_dif!=null&&<div style={{marginTop:2,color:"#9ca3af",fontSize:10}}>MACD DIF: {d.macd_dif} DEA: {d.macd_dea} Bar: <span style={{color:(d.macd_bar||0)>=0?"#4ade80":"#f87171"}}>{d.macd_bar}</span></div>}
+    </div>;
+}
+
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

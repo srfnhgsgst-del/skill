@@ -1,18 +1,14 @@
-from datetime import datetime
 from typing import Optional
 import re
 import httpx
 
 from bs4 import BeautifulSoup, Tag
 
-from ecommerce_ops_skill.platform import Platform, RankingPeriod, DataSource
+from ecommerce_ops_skill.platform import Platform, DataSource
 from ecommerce_ops_skill.models import (
     RankingItem,
-    BestSellerList,
-    ProductDetail,
     SalesEstimate,
     KeywordData,
-    CompetitorSnapshot,
 )
 
 
@@ -134,7 +130,7 @@ class TaobaoClient:
                 is_tmall = tmall_icon is not None
 
                 location_tag = card.select_one(".location, .item-location")
-                location = location_tag.get_text(strip=True) if location_tag else ""
+                _ = location_tag.get_text(strip=True) if location_tag else ""
 
                 img_tag = card.select_one("img[data-src], img[src]")
                 img_url = ""
@@ -238,9 +234,6 @@ class TaobaoClient:
     ) -> SalesEstimate:
         confidence = 0.7
         estimated_monthly_revenue = monthly_sales_display * price
-
-        conversion_rate = 0.03
-        daily_uv = int(monthly_sales_display / 30 / conversion_rate)
 
         return SalesEstimate(
             asin="",

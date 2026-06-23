@@ -5,7 +5,6 @@ import httpx
 
 from ecommerce_ops_skill.platform import Platform, AmazonDomain, RankingPeriod
 from ecommerce_ops_skill.models import (
-    RankingItem,
     BestSellerList,
     ProductDetail,
     SalesEstimate,
@@ -235,7 +234,6 @@ class AmazonClient:
 
     def _extract_categories(self, html: str) -> list[dict]:
         from bs4 import BeautifulSoup
-        import urllib.parse
 
         soup = BeautifulSoup(html, "lxml")
         categories: list[dict] = []

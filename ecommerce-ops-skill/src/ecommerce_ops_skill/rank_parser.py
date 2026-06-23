@@ -1,5 +1,4 @@
-﻿from datetime import datetime
-from typing import Optional
+﻿from typing import Optional
 
 from bs4 import BeautifulSoup, Tag
 

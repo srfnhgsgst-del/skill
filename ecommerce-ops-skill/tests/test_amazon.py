@@ -3,14 +3,10 @@ from ecommerce_ops_skill import (
     Platform,
     AmazonDomain,
     RankingItem,
-    RankingPeriod,
     BestSellerList,
-    ProductDetail,
-    SalesEstimate,
     RankParser,
     AmazonSalesEstimator,
     StrategyEngine,
-    DataSource,
 )
 
 

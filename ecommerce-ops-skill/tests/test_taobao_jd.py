@@ -6,9 +6,7 @@ from ecommerce_ops_skill import (
     TaobaoSalesEstimator,
     JDClient,
     JDCategoryRanking,
-    DataFetcher,
     StrategyEngine,
-    AmazonDomain,
     RankingItem,
     DataSource,
 )

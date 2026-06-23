@@ -105,7 +105,7 @@ class DataExporter:
             if sales:
                 lines.append(f"    平均销量/评论: {int(sum(sales)/len(sales)):,}")
 
-            lines.append(f"    Top 3:")
+            lines.append("    Top 3:")
             for item in items[:3]:
                 price_str = f"CNY{item.price}" if item.price else "N/A"
                 flags = " [B]" if item.is_bestseller else ""
@@ -115,7 +115,7 @@ class DataExporter:
         lines.append(f"  全平台总计: {total_products} 条商品")
 
         if sales_estimates:
-            lines.append(f"\n  [销量估算]")
+            lines.append("\n  [销量估算]")
             for pid, est in list(sales_estimates.items())[:5]:
                 lines.append(f"    {pid}: 日销~{est.estimated_daily_sales or 'N/A'} "
                            f"月销~{est.estimated_monthly_sales or 'N/A'} "

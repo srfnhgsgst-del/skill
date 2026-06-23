@@ -1,18 +1,14 @@
-from datetime import datetime
 from typing import Optional
 import re
 import httpx
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from ecommerce_ops_skill.platform import Platform, RankingPeriod, DataSource
 from ecommerce_ops_skill.models import (
     RankingItem,
     BestSellerList,
-    ProductDetail,
     SalesEstimate,
-    KeywordData,
-    CompetitorSnapshot,
 )
 
 

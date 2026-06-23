@@ -5,14 +5,11 @@ import httpx
 
 from bs4 import BeautifulSoup, Tag
 
-from ecommerce_ops_skill.platform import Platform, RankingPeriod, DataSource
+from ecommerce_ops_skill.platform import Platform, DataSource
 from ecommerce_ops_skill.models import (
     RankingItem,
-    BestSellerList,
-    ProductDetail,
     SalesEstimate,
     KeywordData,
-    CompetitorSnapshot,
 )
 
 
