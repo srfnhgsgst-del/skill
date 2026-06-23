@@ -21,6 +21,21 @@ MODEL_ALIASES = {
 
 DEFAULT_MODEL = "deepseek-v4-flash"
 
+CONCURRENCY_LIMITS = {
+    "deepseek-v4-flash": 2500,
+    "deepseek-v4-pro": 500,
+}
+
+CONTEXT_LIMITS = {
+    "deepseek-v4-flash": 1_000_000,
+    "deepseek-v4-pro": 1_000_000,
+}
+
+OUTPUT_LIMITS = {
+    "deepseek-v4-flash": 384_000,
+    "deepseek-v4-pro": 384_000,
+}
+
 
 def get_pricing(model: str = DEFAULT_MODEL) -> dict:
     resolved = MODEL_ALIASES.get(model, model)
@@ -41,7 +56,41 @@ def output_cost_per_token(model: str = DEFAULT_MODEL) -> float:
     return get_pricing(model)["output"] / 1_000_000
 
 
-CONCURRENCY_LIMITS = {
-    "deepseek-v4-flash": 2500,
-    "deepseek-v4-pro": 500,
-}
+def estimate_api_cost(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_miss_ratio: float = 1.0,
+) -> dict:
+    p = get_pricing(model)
+    miss = input_tokens * cache_miss_ratio
+    hit = input_tokens * (1 - cache_miss_ratio)
+    cost = (miss / 1_000_000) * p["cache_miss"]
+    cost += (hit / 1_000_000) * p["cache_hit"]
+    cost += (output_tokens / 1_000_000) * p["output"]
+    return {
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_miss_ratio": cache_miss_ratio,
+        "estimated_cost_usd": round(cost, 8),
+    }
+
+
+def get_rate_limit_warning(
+    model: str,
+    requests_5min: int,
+    concurrency: int,
+) -> str | None:
+    limit = CONCURRENCY_LIMITS.get(resolve_model(model), 500)
+    if concurrency > limit * 0.8:
+        return (
+            f"WARNING: Concurrency ({concurrency}) exceeds 80% of "
+            f"the {limit} limit for {resolve_model(model)}"
+        )
+    if requests_5min > limit * 5:
+        return (
+            f"WARNING: {requests_5min} requests in 5min approaching "
+            f"rate limit"
+        )
+    return None
