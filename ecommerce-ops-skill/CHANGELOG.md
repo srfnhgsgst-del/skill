@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.8.0 (2026-06-25)
+
+### Added
+- **Excel 导出** (`DataExporter.to_excel()`)
+  - 生成 `.xlsx` 文件（自动列宽/表头样式/蓝色填充）
+  - 支持导出到文件或返回 bytes
+  - `export_bestseller_list()` 支持 `format="xlsx"`
+- **可选依赖** `openpyxl>=3.1.0`：`pip install ecommerce-ops-skill[excel]`
+- **CLI** `ecommerce-ops export xlsx 关键词 -o output.xlsx`
+- 3 个新单元测试覆盖 Excel 导出
+
+### Changed
+- `to_csv()` 重构：共用 `_HEADERS` / `_item_row()` 减少重复
+- 版本升至 0.8.0
+
 ## v0.7.0 (2026-06-25)
 
 ### Added

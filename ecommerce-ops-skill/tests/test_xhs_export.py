@@ -1,7 +1,7 @@
 import pytest
 from ecommerce_ops_skill import (
     Platform, RankingItem, DataSource, DataExporter,
-    XiaohongshuClient, StrategyEngine,
+    XiaohongshuClient, StrategyEngine, BestSellerList,
 )
 
 
@@ -246,3 +246,28 @@ class TestDataExporterFileIO:
         DataExporter.to_json(items, filepath=fp)
         with open(fp, "r", encoding="utf-8") as f:
             assert "B01" in f.read()
+
+    def test_excel_bytes(self):
+        items = [RankingItem(platform=Platform.AMAZON, rank=1, asin_or_id="B01", title="Test", price=9.99,
+                            currency="USD", data_source=DataSource.WEB_SCRAPING)]
+        data = DataExporter.to_excel(items)
+        assert len(data) > 100
+        assert data[:2] == b"PK"
+
+    def test_excel_to_file(self, tmp_path):
+        items = [RankingItem(platform=Platform.TAOBAO, rank=2, asin_or_id="TB01", title="淘宝商品",
+                            price=89.0, currency="CNY", data_source=DataSource.WEB_SCRAPING)]
+        fp = str(tmp_path / "test.xlsx")
+        DataExporter.to_excel(items, filepath=fp)
+        with open(fp, "rb") as f:
+            content = f.read()
+        assert len(content) > 100
+        assert content[:2] == b"PK"
+
+    def test_export_bestseller_list_xlsx(self, tmp_path):
+        bl = BestSellerList(platform=Platform.JD, category_id="test", category_name="Test",
+                           items=[RankingItem(platform=Platform.JD, rank=1, asin_or_id="JD01",
+                                             title="JD Item", data_source=DataSource.WEB_SCRAPING)])
+        fp = str(tmp_path / "bl.xlsx")
+        result = DataExporter.export_bestseller_list(bl, format="xlsx", filepath=fp)
+        assert "Exported" in result

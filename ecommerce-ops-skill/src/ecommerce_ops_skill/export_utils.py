@@ -10,32 +10,37 @@ from ecommerce_ops_skill.models import RankingItem, BestSellerList, SalesEstimat
 class DataExporter:
     """数据导出工具 — CSV/Excel/JSON 导出 + 运营日报生成 + GMV 看板"""
 
+    _HEADERS = ["Rank", "Platform", "ASIN/ID", "Title", "Price", "Currency",
+                "Rating", "Reviews/Sales", "Brand/Shop", "Category",
+                "Bestseller", "Sponsored", "Fetched At"]
+
+    @staticmethod
+    def _item_row(item: RankingItem) -> list:
+        return [
+            item.rank,
+            item.platform.value if item.platform else "",
+            item.asin_or_id,
+            item.title[:100] if item.title else "",
+            item.price if item.price else "",
+            item.currency,
+            item.rating if item.rating else "",
+            item.review_count if item.review_count else "",
+            item.brand if item.brand else "",
+            item.category if item.category else "",
+            "Y" if item.is_bestseller else "",
+            "Y" if item.is_sponsored else "",
+            item.fetched_at.isoformat() if item.fetched_at else "",
+        ]
+
     @staticmethod
     def to_csv(items: list[RankingItem], filepath: Optional[str] = None) -> str:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        headers = ["Rank", "Platform", "ASIN/ID", "Title", "Price", "Currency",
-                   "Rating", "Reviews/Sales", "Brand/Shop", "Category",
-                   "Bestseller", "Sponsored", "Fetched At"]
-        writer.writerow(headers)
+        writer.writerow(DataExporter._HEADERS)
 
         for item in items:
-            writer.writerow([
-                item.rank,
-                item.platform.value if item.platform else "",
-                item.asin_or_id,
-                item.title[:100] if item.title else "",
-                item.price if item.price else "",
-                item.currency,
-                item.rating if item.rating else "",
-                item.review_count if item.review_count else "",
-                item.brand if item.brand else "",
-                item.category if item.category else "",
-                "Y" if item.is_bestseller else "",
-                "Y" if item.is_sponsored else "",
-                item.fetched_at.isoformat() if item.fetched_at else "",
-            ])
+            writer.writerow(DataExporter._item_row(item))
 
         csv_content = output.getvalue()
         output.close()
@@ -177,13 +182,50 @@ class DataExporter:
         }
 
     @staticmethod
+    def to_excel(items: list[RankingItem], filepath: Optional[str] = None) -> bytes:
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+        except ImportError:
+            raise ImportError("openpyxl is required for Excel export. Install: pip install openpyxl")
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "RankingData"
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        for col, header in enumerate(DataExporter._HEADERS, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+        for row_idx, item in enumerate(items, 2):
+            for col_idx, value in enumerate(DataExporter._item_row(item), 1):
+                ws.cell(row=row_idx, column=col_idx, value=value)
+        for col_idx in range(1, len(DataExporter._HEADERS) + 1):
+            max_len = max(
+                (len(str(ws.cell(row=r, column=col_idx).value or "")) for r in range(1, len(items) + 2))
+            )
+            ws.column_dimensions[chr(64 + col_idx)].width = min(max_len + 3, 40)
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        excel_bytes = buf.getvalue()
+        if filepath:
+            with open(filepath, "wb") as f:
+                f.write(excel_bytes)
+        return excel_bytes
+
+    @staticmethod
     def export_bestseller_list(bl: BestSellerList, format: str = "csv", filepath: Optional[str] = None) -> str:
         if format == "csv":
             return DataExporter.to_csv(bl.items, filepath)
         elif format == "json":
             return DataExporter.to_json(bl.items, filepath)
+        elif format == "xlsx":
+            DataExporter.to_excel(bl.items, filepath)
+            return f"Exported to {filepath}" if filepath else "excel_bytes"
         else:
-            raise ValueError(f"Unsupported format: {format}. Use 'csv' or 'json'.")
+            raise ValueError(f"Unsupported format: {format}. Use 'csv', 'json', or 'xlsx'.")
 
     @staticmethod
     def create_comparison_table(cross_platform_data: dict[str, list]) -> str:

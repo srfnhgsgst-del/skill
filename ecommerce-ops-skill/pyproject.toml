@@ -31,6 +31,9 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
+excel = [
+    "openpyxl>=3.1.0",
+]
 
 [project.scripts]
 ecommerce-ops = "ecommerce_ops_skill.cli:main"

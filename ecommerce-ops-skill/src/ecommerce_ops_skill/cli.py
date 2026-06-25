@@ -79,14 +79,17 @@ def _demo_items(platform: Platform, keyword: str, count: int = 3) -> list:
 
 def cmd_export(args):
     fmt = args.format.lower()
-    if fmt not in ("csv", "json"):
-        print("格式支持: csv, json")
+    if fmt not in ("csv", "json", "xlsx"):
+        print("格式支持: csv, json, xlsx")
         sys.exit(1)
     items = _demo_items(Platform.AMAZON, args.keyword)
     if fmt == "csv":
         output = DataExporter.to_csv(items, args.output)
-    else:
+    elif fmt == "json":
         output = DataExporter.to_json(items, args.output)
+    else:
+        output = DataExporter.to_excel(items, args.output)
+        output = f"Exported {len(output)} bytes"
     if args.output:
         print(f"导出成功: {args.output}")
     else:
@@ -203,7 +206,7 @@ def main():
     p_strategy.add_argument("--budget", default="medium", choices=["low", "medium", "high"])
 
     p_export = sub.add_parser("export", help="导出示例数据")
-    p_export.add_argument("format", choices=["csv", "json"])
+    p_export.add_argument("format", choices=["csv", "json", "xlsx"])
     p_export.add_argument("keyword", default="蓝牙耳机", nargs="?")
     p_export.add_argument("--output", "-o", default=None, help="输出文件路径")
 
