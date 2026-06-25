@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.7.0 (2026-06-25)
+
+### Added
+- **HTTP 基础客户端** (`http_client.BaseHttpClient`)
+  - 统一封装会话管理（lazy httpx.Client）
+  - Cookie 自动跟踪：`_update_cookies(response)`
+  - 自动重试机制（429/5xx 指数退避，最多 2 次）
+  - 封装 `get()` / `post()` / `request()` 方法，含错误处理和超时
+
+### Changed
+- **重构 6 个平台客户端** 全部继承 `BaseHttpClient`
+  - `AmazonClient`, `TaobaoClient`, `JDClient`, `PinduoduoClient`, `DouyinClient`, `XiaohongshuClient`
+  - 每个客户端减少 ~20 行重复代码（`__init__` / `client` 属性 / `close` 方法）
+- **XiaohongshuClient** 使用 `self.get()` + `_update_cookies()` 替代旧模式
+- 版本升至 0.7.0
+
 ## v0.6.0 (2026-06-25)
 
 ### Added

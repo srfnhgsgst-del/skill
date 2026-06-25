@@ -1,5 +1,4 @@
 from typing import Optional
-import httpx
 
 from ecommerce_ops_skill.platform import Platform, DataSource
 from ecommerce_ops_skill.models import (
@@ -7,7 +6,10 @@ from ecommerce_ops_skill.models import (
 )
 
 
-class DouyinClient:
+from ecommerce_ops_skill.http_client import BaseHttpClient
+
+
+class DouyinClient(BaseHttpClient):
     """抖音电商 数据模型 —— 直播/短视频/商品卡的 GPM/Opm/转化漏斗分析"""
 
     DEFAULT_HEADERS = {
@@ -35,23 +37,7 @@ class DouyinClient:
     }
 
     def __init__(self, timeout: float = 30.0):
-        self.timeout = timeout
-        self._client: Optional[httpx.Client] = None
-
-    @property
-    def client(self) -> httpx.Client:
-        if self._client is None:
-            self._client = httpx.Client(
-                headers=self.DEFAULT_HEADERS,
-                timeout=self.timeout,
-                follow_redirects=True,
-            )
-        return self._client
-
-    def close(self):
-        if self._client:
-            self._client.close()
-            self._client = None
+        super().__init__(timeout=timeout)
 
     def estimate_live_gmv(
         self,

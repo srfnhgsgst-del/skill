@@ -1,17 +1,17 @@
 import json
 import re
 from typing import Optional
-import httpx
 
 from ecommerce_ops_skill.platform import Platform
 from ecommerce_ops_skill.models import KeywordData, RankingItem, DataSource
+from ecommerce_ops_skill.http_client import BaseHttpClient
 
 
 class XiaohongshuScrapingError(Exception):
-    """Raised when real HTTP scraping fails and fallback is used."""
+    pass
 
 
-class XiaohongshuClient:
+class XiaohongshuClient(BaseHttpClient):
     """小红书电商 — 笔记解析 + 达人分析 + 品牌投放ROI + 真实HTTP搜索"""
 
     SEARCH_URL = "https://www.xiaohongshu.com/search_result"
@@ -37,30 +37,8 @@ class XiaohongshuClient:
     }
 
     def __init__(self, timeout: float = 30.0, cookies: Optional[dict] = None):
-        self.timeout = timeout
-        self._cookies = cookies or {}
-        self._client: Optional[httpx.Client] = None
+        super().__init__(timeout=timeout, cookies=cookies)
         self._real_data_available = False
-
-    @property
-    def client(self) -> httpx.Client:
-        if self._client is None:
-            self._client = httpx.Client(
-                headers=self.DEFAULT_HEADERS,
-                cookies=self._cookies,
-                timeout=self.timeout,
-                follow_redirects=True,
-            )
-        return self._client
-
-    def close(self):
-        if self._client:
-            self._client.close()
-            self._client = None
-
-    def _set_cookies(self, response: httpx.Response):
-        for cookie in response.cookies:
-            self._cookies[cookie.name] = cookie.value
 
     # ---- Real HTTP methods ----
 
@@ -72,9 +50,8 @@ class XiaohongshuClient:
             params = {"keyword": keyword, "source": "web_search_result_notes"}
             if page > 1:
                 params["page"] = str(page)
-            resp = self.client.get(self.SEARCH_URL, params=params)
-            resp.raise_for_status()
-            self._set_cookies(resp)
+            resp = self.get(self.SEARCH_URL, params=params)
+            self._update_cookies(resp)
             items = self._parse_search_html(resp.text, keyword)
             if items:
                 self._real_data_available = True
@@ -86,9 +63,8 @@ class XiaohongshuClient:
     def get_note_detail(self, note_id: str) -> dict:
         """获取单篇笔记详情。真实HTTP + mock降级"""
         try:
-            resp = self.client.get(f"{self.NOTE_URL}/{note_id}")
-            resp.raise_for_status()
-            self._set_cookies(resp)
+            resp = self.get(f"{self.NOTE_URL}/{note_id}")
+            self._update_cookies(resp)
             data = self._parse_note_html(resp.text, note_id)
             if data:
                 self._real_data_available = True
@@ -103,9 +79,8 @@ class XiaohongshuClient:
             params = {"keyword": keyword, "source": "web_search_result_users"}
             if page > 1:
                 params["page"] = str(page)
-            resp = self.client.get(self.SEARCH_URL, params=params)
-            resp.raise_for_status()
-            self._set_cookies(resp)
+            resp = self.get(self.SEARCH_URL, params=params)
+            self._update_cookies(resp)
             users = self._parse_user_html(resp.text, keyword)
             if users:
                 self._real_data_available = True

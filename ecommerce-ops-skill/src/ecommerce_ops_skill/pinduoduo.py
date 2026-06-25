@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional
 import re
-import httpx
 
 from bs4 import BeautifulSoup, Tag
 
@@ -13,7 +12,10 @@ from ecommerce_ops_skill.models import (
 )
 
 
-class PinduoduoClient:
+from ecommerce_ops_skill.http_client import BaseHttpClient
+
+
+class PinduoduoClient(BaseHttpClient):
     """拼多多 搜索排名解析 + 已拼件数差值法销量估算 + 价格竞争分析"""
 
     DEFAULT_HEADERS = {
@@ -42,24 +44,8 @@ class PinduoduoClient:
     }
 
     def __init__(self, timeout: float = 30.0):
-        self.timeout = timeout
-        self._client: Optional[httpx.Client] = None
+        super().__init__(timeout=timeout)
         self._sales_snapshots: dict[str, list[dict]] = {}
-
-    @property
-    def client(self) -> httpx.Client:
-        if self._client is None:
-            self._client = httpx.Client(
-                headers=self.DEFAULT_HEADERS,
-                timeout=self.timeout,
-                follow_redirects=True,
-            )
-        return self._client
-
-    def close(self):
-        if self._client:
-            self._client.close()
-            self._client = None
 
     def search_products(
         self,

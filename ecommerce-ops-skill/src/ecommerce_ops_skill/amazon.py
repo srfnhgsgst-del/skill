@@ -1,7 +1,6 @@
 ﻿from datetime import datetime
 from typing import Optional
 
-import httpx
 
 from ecommerce_ops_skill.platform import Platform, AmazonDomain, RankingPeriod
 from ecommerce_ops_skill.models import (
@@ -12,9 +11,10 @@ from ecommerce_ops_skill.models import (
     DataSource,
 )
 from ecommerce_ops_skill.rank_parser import RankParser
+from ecommerce_ops_skill.http_client import BaseHttpClient
 
 
-class AmazonClient:
+class AmazonClient(BaseHttpClient):
     """Amazon 销量榜单读取客户端，覆盖 BSR 榜单、产品详情、销量估算"""
 
     DEFAULT_HEADERS = {
@@ -29,24 +29,8 @@ class AmazonClient:
     }
 
     def __init__(self, domain: AmazonDomain = AmazonDomain.US, timeout: float = 30.0):
+        super().__init__(timeout=timeout)
         self.domain = domain
-        self.timeout = timeout
-        self._client: Optional[httpx.Client] = None
-
-    @property
-    def client(self) -> httpx.Client:
-        if self._client is None:
-            self._client = httpx.Client(
-                headers=self.DEFAULT_HEADERS,
-                timeout=self.timeout,
-                follow_redirects=True,
-            )
-        return self._client
-
-    def close(self):
-        if self._client:
-            self._client.close()
-            self._client = None
 
     def get_bestsellers(
         self,
