@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.5.0 (2026-06-25)
+
+### Added
+- **CLI 命令行工具** (`ecommerce-ops`)
+  - `ecommerce-ops strategy <平台>` — 获取 6 阶段运营策略（选品→上架→流量→转化→复购）
+  - `ecommerce-ops strategy <平台> --budget low|medium|high` — 按预算档位策略
+  - `ecommerce-ops export csv|json <关键词>` — 导出示例数据到 CSV/JSON
+  - `ecommerce-ops report <关键词>` — 生成多平台运营日报
+  - `ecommerce-ops dashboard` — 生成 GMV 经营看板（总额/分布/分层）
+  - `ecommerce-ops compare <平台1> <平台2>` — 跨平台比价表
+  - `ecommerce-ops xhs-note <参数>` — 小红书笔记表现分析
+  - `ecommerce-ops list-platforms` — 列出所有支持的平台
+- 18 个 CLI 单元测试，覆盖所有子命令
+
+### Changed
+- 版本升至 0.5.0
+- `pyproject.toml`: 注册 `[project.scripts]` 入口点
+- `__init__.py`: 导出 `cli_main`
+
 ## v0.4.0 (2026-06-22)
 
 ### Added

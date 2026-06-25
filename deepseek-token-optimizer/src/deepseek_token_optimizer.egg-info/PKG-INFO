@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: deepseek-token-optimizer
-Version: 1.1.0
+Version: 1.3.0
 Summary: Optimize DeepSeek API token consumption by up to 70% through cache-aware design, thinking-mode control, and token budget management
 License: MIT
 Classifier: Development Status :: 4 - Beta

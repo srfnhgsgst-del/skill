@@ -1,9 +1,11 @@
+CHANGELOG.md
 MANIFEST.in
 README.md
 pyproject.toml
 skill.md
 examples/basic_usage.py
 src/deepseek_token_optimizer/__init__.py
+src/deepseek_token_optimizer/analyzer.py
 src/deepseek_token_optimizer/cache_utils.py
 src/deepseek_token_optimizer/middleware.py
 src/deepseek_token_optimizer/optimizer.py

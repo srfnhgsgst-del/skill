@@ -32,5 +32,8 @@ dev = [
     "pytest-cov>=4.0",
 ]
 
+[project.scripts]
+ecommerce-ops = "ecommerce_ops_skill.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

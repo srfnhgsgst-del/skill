@@ -15,8 +15,9 @@ from ecommerce_ops_skill.xiaohongshu import XiaohongshuClient
 from ecommerce_ops_skill.data_fetcher import DataFetcher
 from ecommerce_ops_skill.strategy_engine import StrategyEngine
 from ecommerce_ops_skill.export_utils import DataExporter
+from ecommerce_ops_skill.cli import main as cli_main
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = [
     "Platform", "AmazonDomain", "RankingPeriod", "StrategyPhase", "DataSource",
     "RankingItem", "BSRHistory", "ProductDetail", "CategoryNode", "BestSellerList",
@@ -28,5 +29,5 @@ __all__ = [
     "PinduoduoClient", "PinduoduoSalesEstimator",
     "DouyinClient", "DouyinLiveMetrics", "DouyinTrafficSource",
     "XiaohongshuClient",
-    "DataFetcher", "StrategyEngine", "DataExporter",
+    "DataFetcher", "StrategyEngine", "DataExporter", "cli_main",
 ]
