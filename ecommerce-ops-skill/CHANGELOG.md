@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.9.0 (2026-06-25)
+
+### Added
+- **Web Search 集成** (`WebSearchClient` / `SerpApiClient` / `MockWebSearchClient`)
+  - `search_products()` / `search_news()` / `search_trends()` 三大搜索方法
+  - `SerpApiClient`：真实 SerpAPI 数据（需 `SERPAPI_API_KEY` 环境变量），无 Key 自动 fallback 到模拟数据
+  - `MockWebSearchClient`：纯模拟数据，用于测试
+- **StrategyEngine 增强** — 3 个新方法：
+  - `market_insights(keyword, client)` → 市场情绪分析 + 商品/资讯聚合
+  - `enrich_competitor_analysis(items, client)` → 竞品分析 + Web 价格/资讯补充
+  - `enriched_strategy(keyword, client, ...)` → 全量策略 + 市场洞察 + 季节性预测
+- **CLI 命令**：
+  - `ecommerce-ops market-trends 关键词 [--api-key KEY] [--detail]`
+  - `ecommerce-ops enriched-strategy 关键词 --platform amazon [--category] [--budget] [--api-key]`
+- 8 个新单元测试覆盖 Web Search 模块
+
 ## v0.8.0 (2026-06-25)
 
 ### Added

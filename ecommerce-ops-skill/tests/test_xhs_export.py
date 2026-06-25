@@ -2,6 +2,7 @@ import pytest
 from ecommerce_ops_skill import (
     Platform, RankingItem, DataSource, DataExporter,
     XiaohongshuClient, StrategyEngine, BestSellerList,
+    MockWebSearchClient, SerpApiClient, WebSearchClient,
 )
 
 
@@ -271,3 +272,70 @@ class TestDataExporterFileIO:
         fp = str(tmp_path / "bl.xlsx")
         result = DataExporter.export_bestseller_list(bl, format="xlsx", filepath=fp)
         assert "Exported" in result
+
+
+class TestWebSearch:
+    def test_mock_client_search_products(self):
+        client = MockWebSearchClient()
+        result = client.search_products("蓝牙耳机")
+        assert result["query"] == "蓝牙耳机"
+        assert len(result["results"]) == 10
+        assert result["source_type"] == "mock"
+        assert not result["using_real_data"]
+        for r in result["results"]:
+            assert "蓝牙耳机" in r["title"]
+
+    def test_mock_client_search_news(self):
+        client = MockWebSearchClient()
+        result = client.search_news("跨境电商", max_results=3)
+        assert len(result["results"]) == 3
+        assert result["result_type"] == "news"
+
+    def test_mock_client_search_trends(self):
+        client = MockWebSearchClient()
+        result = client.search_trends("fashion", max_results=5)
+        assert len(result["results"]) == 5
+        assert result["result_type"] == "trends"
+
+    def test_serpapi_fallback_when_no_key(self):
+        client = SerpApiClient(api_key="")
+        assert not client.using_real_data
+        result = client.search_products("test")
+        assert not result["using_real_data"]
+        assert result["source_type"] == "mock"
+        assert "error" in result
+
+    def test_base_class_raises(self):
+        client = WebSearchClient()
+        with pytest.raises(NotImplementedError):
+            client.search_products("test")
+
+    def test_strategy_market_insights_with_mock(self):
+        engine = StrategyEngine()
+        client = MockWebSearchClient()
+        result = engine.market_insights("蓝牙耳机", client)
+        assert result["keyword"] == "蓝牙耳机"
+        assert result["sentiment"] in ("positive", "negative", "neutral")
+        assert result["news_count"] == 10
+        assert result["product_count"] == 10
+        assert not result["using_real_data"]
+
+    def test_strategy_enrich_competitor(self):
+        engine = StrategyEngine()
+        items = [RankingItem(platform=Platform.AMAZON, rank=1, asin_or_id="B01",
+                            title="Test Product", price=25.0, data_source=DataSource.WEB_SCRAPING)]
+        client = MockWebSearchClient()
+        result = engine.enrich_competitor_analysis(items, client)
+        assert "web_enrichment" in result
+        assert result["web_enrichment"]["source_type"] == "mock"
+        assert len(result["web_enrichment"]["web_news_snippets"]) >= 1
+
+    def test_strategy_enriched_strategy(self):
+        engine = StrategyEngine(platform=Platform.AMAZON)
+        client = MockWebSearchClient()
+        result = engine.enriched_strategy("wireless earbuds", client)
+        assert result["keyword"] == "wireless earbuds"
+        assert "market_insights" in result
+        assert "seasonal_info" in result
+        assert len(result["strategy_phases"]) == 6
+        assert not result["using_real_data"]

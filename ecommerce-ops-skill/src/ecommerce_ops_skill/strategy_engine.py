@@ -2,6 +2,7 @@ from datetime import datetime as _dt
 from typing import Optional
 
 from ecommerce_ops_skill.platform import Platform, StrategyPhase
+from ecommerce_ops_skill.web_search import WebSearchClient, MockWebSearchClient
 
 
 class StrategyEngine:
@@ -67,6 +68,87 @@ class StrategyEngine:
                     "avg_price_cny": round(avg_price, 2) if avg_price else None,
                 }
         return comparison
+
+    def market_insights(self, keyword: str, client: Optional[WebSearchClient] = None) -> dict:
+        client = client or MockWebSearchClient()
+        news = client.search_news(keyword)
+        products = client.search_products(keyword)
+        trends = client.search_trends(keyword)
+
+        snippets = [r["snippet"] for r in news.get("results", [])]
+        product_titles = [r["title"] for r in products.get("results", [])]
+        trend_snippets = [r["snippet"] for r in trends.get("results", [])]
+        combined = snippets + trend_snippets
+
+        sentiment = "positive"
+        positive_words = ["增长", "rise", "growth", "hot", "trending", "爆发", "热销"]
+        negative_words = ["下滑", "decline", "drop", "危机", "衰退", "下降", "饱和"]
+        pos = sum(1 for s in combined for w in positive_words if w in s.lower())
+        neg = sum(1 for s in combined for w in negative_words if w in s.lower())
+        if pos > neg * 2:
+            sentiment = "positive"
+        elif neg > pos * 2:
+            sentiment = "negative"
+        else:
+            sentiment = "neutral"
+
+        return {
+            "keyword": keyword,
+            "sentiment": sentiment,
+            "news_count": len(news.get("results", [])),
+            "product_count": len(products.get("results", [])),
+            "sample_products": product_titles[:5],
+            "sample_headlines": snippets[:3],
+            "source_type": news.get("source_type", "mock"),
+            "using_real_data": news.get("using_real_data", False),
+        }
+
+    def enrich_competitor_analysis(self, items: list, client: Optional[WebSearchClient] = None) -> dict:
+        client = client or MockWebSearchClient()
+        base = self.analyze_competitor_from_bestseller(type("BList", (), {"items": items})())
+        if not items:
+            return base
+
+        keyword = items[0].title or ""
+        news = client.search_news(keyword, max_results=5)
+        products = client.search_products(keyword, max_results=5)
+
+        web_snippets = [r["snippet"] for r in news.get("results", [])]
+        web_prices = []
+        for r in products.get("results", []):
+            import re
+            nums = re.findall(r"[\d.]+", r.get("snippet", ""))
+            if nums:
+                try:
+                    web_prices.append(float(nums[0]))
+                except ValueError:
+                    pass
+
+        base["web_enrichment"] = {
+            "web_news_snippets": web_snippets[:3],
+            "web_price_indicators": web_prices[:5],
+            "avg_web_price": round(sum(web_prices) / max(1, len(web_prices)), 2) if web_prices else None,
+            "source_type": news.get("source_type", "mock"),
+            "using_real_data": news.get("using_real_data", False),
+        }
+        return base
+
+    def enriched_strategy(self, keyword: str, client: Optional[WebSearchClient] = None,
+                          product_category: str = "", target_market: str = "US",
+                          budget_level: str = "medium") -> dict:
+        client = client or MockWebSearchClient()
+        insights = self.market_insights(keyword, client)
+        phases = self.full_strategy(product_category, target_market, budget_level)
+        seasonal = self.predict_seasonal_trend(product_category or keyword)
+
+        return {
+            "keyword": keyword,
+            "market_insights": insights,
+            "seasonal_info": seasonal,
+            "strategy_phases": phases,
+            "source_type": insights["source_type"],
+            "using_real_data": insights["using_real_data"],
+        }
 
     def _selection_phase(self, category: str, market: str, budget: str) -> dict:
         if self.platform == Platform.AMAZON:

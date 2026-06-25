@@ -7,6 +7,7 @@ from ecommerce_ops_skill.models import RankingItem, DataSource
 from ecommerce_ops_skill.strategy_engine import StrategyEngine
 from ecommerce_ops_skill.export_utils import DataExporter
 from ecommerce_ops_skill.xiaohongshu import XiaohongshuClient
+from ecommerce_ops_skill.web_search import SerpApiClient, MockWebSearchClient
 
 
 def _parse_platform(name: str) -> Optional[Platform]:
@@ -194,6 +195,60 @@ def cmd_xhs_detail(args):
     print(f"数据源: {detail.get('data_source', 'N/A')}")
 
 
+def cmd_market_trends(args):
+    client = SerpApiClient() if args.api_key else MockWebSearchClient()
+    engine = StrategyEngine()
+    insights = engine.market_insights(args.keyword, client)
+    src = "真实数据" if insights["using_real_data"] else "模拟数据"
+    print(f"\n市场洞察 — {args.keyword} [{src}]\n{'='*40}")
+    print(f"市场情绪:   {insights['sentiment']}")
+    print(f"相关资讯:   {insights['news_count']}条")
+    print(f"相关商品:   {insights['product_count']}条")
+    if insights["sample_products"]:
+        print("\n商品示例:")
+        for p in insights["sample_products"]:
+            print(f"  • {p[:50]}")
+    if insights["sample_headlines"]:
+        print("\n资讯摘要:")
+        for h in insights["sample_headlines"]:
+            print(f"  • {h[:80]}")
+
+    if args.detail:
+        news = client.search_news(args.keyword)
+        products = client.search_products(args.keyword)
+        print("\n--- 详细搜索数据 ---")
+        print("\n[商品]")
+        for r in products.get("results", []):
+            print(f"  {r['title'][:40]:40s} {r['link']}")
+        print("\n[资讯]")
+        for r in news.get("results", []):
+            print(f"  {r['title'][:40]:40s} {r['link']}")
+
+
+def cmd_enriched_strategy(args):
+    platform = _parse_platform(args.platform)
+    if not platform:
+        print(f"错误: 不支持平台 '{args.platform}'")
+        sys.exit(1)
+    client = SerpApiClient() if args.api_key else MockWebSearchClient()
+    engine = StrategyEngine(platform=platform)
+    result = engine.enriched_strategy(
+        keyword=args.keyword, client=client,
+        product_category=args.category, target_market=args.market,
+        budget_level=args.budget,
+    )
+    src = "真实数据" if result["using_real_data"] else "模拟数据"
+    print(f"\n增强策略分析 — {args.keyword} [{src}]\n{'='*50}")
+    mi = result["market_insights"]
+    print(f"\n市场情绪: {mi['sentiment'].upper()} | 资讯: {mi['news_count']}条 | 商品: {mi['product_count']}条")
+    si = result["seasonal_info"]
+    print(f"旺季: {', '.join(si['peak_months'])} | 淡季: {', '.join(si['trough_months'])}")
+    print(f"下一旺季: {si['next_peak']}")
+    for phase in result["strategy_phases"]:
+        _print_strategy(phase)
+        print()
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="ecommerce-ops",
@@ -240,6 +295,19 @@ def main():
 
     sub.add_parser("list-platforms", help="列出支持的平台")
 
+    p_mt = sub.add_parser("market-trends", help="搜索市场趋势（Web 搜索）")
+    p_mt.add_argument("keyword", help="搜索关键词")
+    p_mt.add_argument("--api-key", default=None, help="SerpAPI 密钥（可选，默认模拟数据）")
+    p_mt.add_argument("--detail", action="store_true", help="显示详细搜索数据")
+
+    p_es = sub.add_parser("enriched-strategy", help="增强策略分析（集成 Web 数据）")
+    p_es.add_argument("keyword", help="搜索关键词")
+    p_es.add_argument("--platform", default="amazon", help="平台名称")
+    p_es.add_argument("--category", default="", help="产品品类")
+    p_es.add_argument("--market", default="US", help="目标市场")
+    p_es.add_argument("--budget", default="medium", choices=["low", "medium", "high"])
+    p_es.add_argument("--api-key", default=None, help="SerpAPI 密钥")
+
     args = parser.parse_args()
 
     commands = {
@@ -252,6 +320,8 @@ def main():
         "xhs-search": cmd_xhs_search,
         "xhs-detail": cmd_xhs_detail,
         "list-platforms": cmd_list_platforms,
+        "market-trends": cmd_market_trends,
+        "enriched-strategy": cmd_enriched_strategy,
     }
     commands[args.command](args)
 
