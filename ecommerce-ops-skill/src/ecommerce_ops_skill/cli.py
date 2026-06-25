@@ -160,6 +160,37 @@ def cmd_xhs_note(args):
     print(f"  GMV:      CNY {f['gmv_cny']:,.2f}")
 
 
+def cmd_xhs_search(args):
+    client = XiaohongshuClient()
+    results = client.search_notes(args.keyword, page=args.page)
+    source = "真实数据" if client.using_real_data else "模拟数据"
+    print(f"\n小红书笔记搜索 — {args.keyword} (第{args.page}页) [{source}]\n{'='*50}")
+    for item in results[:args.limit]:
+        flags = " [笔记]" if item.data_source == DataSource.WEB_SCRAPING else ""
+        print(f"  #{item.rank:3d}{flags} {item.title[:40]}")
+    print(f"\n共 {len(results)} 条结果")
+
+
+def cmd_xhs_detail(args):
+    client = XiaohongshuClient()
+    detail = client.get_note_detail(args.note_id)
+    src = "真实" if detail.get("data_source") == "web_scraping" else "模拟"
+    print(f"\n小红书笔记详情 — {args.note_id} [{src}]\n{'='*50}")
+    print(f"标题:   {detail.get('title', 'N/A')}")
+    print(f"作者:   {detail.get('user', {}).get('nickname', 'N/A')}")
+    if "views" in detail:
+        print(f"阅读:   {detail['views']:,}")
+    if "likes" in detail:
+        print(f"点赞:   {detail['likes']:,}")
+    if "collects" in detail:
+        print(f"收藏:   {detail['collects']:,}")
+    if "comments" in detail:
+        print(f"评论:   {detail['comments']:,}")
+    if "shares" in detail:
+        print(f"分享:   {detail['shares']:,}")
+    print(f"数据源: {detail.get('data_source', 'N/A')}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="ecommerce-ops",
@@ -196,6 +227,14 @@ def main():
     p_xhs.add_argument("--cvr", type=float, default=0.02)
     p_xhs.add_argument("--aov", type=float, default=50.0)
 
+    p_xhs_search = sub.add_parser("xhs-search", help="搜索小红书笔记")
+    p_xhs_search.add_argument("keyword", help="搜索关键词")
+    p_xhs_search.add_argument("--page", type=int, default=1)
+    p_xhs_search.add_argument("--limit", type=int, default=10)
+
+    p_xhs_detail = sub.add_parser("xhs-detail", help="获取小红书笔记详情")
+    p_xhs_detail.add_argument("note_id", help="笔记ID")
+
     sub.add_parser("list-platforms", help="列出支持的平台")
 
     args = parser.parse_args()
@@ -207,6 +246,8 @@ def main():
         "dashboard": cmd_dashboard,
         "compare": cmd_compare,
         "xhs-note": cmd_xhs_note,
+        "xhs-search": cmd_xhs_search,
+        "xhs-detail": cmd_xhs_detail,
         "list-platforms": cmd_list_platforms,
     }
     commands[args.command](args)

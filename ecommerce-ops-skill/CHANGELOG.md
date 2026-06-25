@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.6.0 (2026-06-25)
+
+### Added
+- **小红书真实 HTTP 爬虫** (`XiaohongshuClient`)
+  - `search_notes(keyword, page)` — 搜索小红书笔记，解析 `__INITIAL_STATE__` 数据
+  - `get_note_detail(note_id)` — 获取单篇笔记详情（阅读/点赞/收藏/评论/分享）
+  - `search_users(keyword)` — 搜索小红书用户/达人
+  - 真实 API 失败时自动降级到模拟数据（mock fallback）
+  - `using_real_data` 属性标识数据源
+  - HTML 解析器：正则提取 React 初始化状态 JSON
+- **CLI 新增命令**
+  - `xhs-search <keyword>` — 搜索小红书笔记
+  - `xhs-detail <note-id>` — 获取笔记详情
+- 5 个新单元测试覆盖爬虫 mock 降级逻辑
+
+### Changed
+- 版本升至 0.6.0
+- `__init__.py`: 导出 `cli_main`
+
 ## v0.5.0 (2026-06-25)
 
 ### Added

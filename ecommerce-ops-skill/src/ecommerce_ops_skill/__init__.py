@@ -17,7 +17,7 @@ from ecommerce_ops_skill.strategy_engine import StrategyEngine
 from ecommerce_ops_skill.export_utils import DataExporter
 from ecommerce_ops_skill.cli import main as cli_main
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 __all__ = [
     "Platform", "AmazonDomain", "RankingPeriod", "StrategyPhase", "DataSource",
     "RankingItem", "BSRHistory", "ProductDetail", "CategoryNode", "BestSellerList",

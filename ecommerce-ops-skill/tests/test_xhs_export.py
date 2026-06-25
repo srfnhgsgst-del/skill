@@ -84,6 +84,44 @@ class TestXiaohongshuClient:
         )
         assert result["roi"] == pytest.approx(32.0, rel=0.05)
 
+    # ---- Real HTTP scraping tests ----
+
+    def test_search_notes_fallback_to_mock(self):
+        client = XiaohongshuClient()
+        results = client.search_notes("护肤", page=1)
+        assert len(results) == 10
+        assert results[0].platform == Platform.XIAOHONGSHU
+        assert results[0].rank == 1
+        assert "护肤" in results[0].title
+        assert results[0].data_source == DataSource.MODEL_ESTIMATION
+
+    def test_search_notes_page_2(self):
+        client = XiaohongshuClient()
+        results = client.search_notes("穿搭", page=2)
+        assert len(results) == 10
+        assert results[0].rank == 11
+
+    def test_get_note_detail_fallback(self):
+        client = XiaohongshuClient()
+        detail = client.get_note_detail("test-note-123")
+        assert detail["note_id"] == "test-note-123"
+        assert detail["data_source"] == "mock_fallback"
+        assert "title" in detail
+        assert "user" in detail
+
+    def test_search_users_fallback(self):
+        client = XiaohongshuClient()
+        users = client.search_users("美妆")
+        assert len(users) >= 3
+        assert "nickname" in users[0]
+        assert "followers" in users[0]
+
+    def test_using_real_data_flag_false(self):
+        client = XiaohongshuClient()
+        assert client.using_real_data is False
+        client.search_notes("test")
+        assert client.using_real_data is False
+
 
 class TestDataExporter:
     def test_to_csv(self):
